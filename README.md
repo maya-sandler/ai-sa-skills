@@ -142,7 +142,7 @@ git clone <this repo's URL>
 cd ai-sa-skills && ./install.sh
 ```
 
-`install.sh` asks four questions, then fills your answers into the skills and installs them:
+`install.sh` asks four questions and one optional one, then fills your answers into the skills and installs them:
 
 | # | Question | Example answer | Why it's asked |
 |---|---|---|---|
@@ -150,6 +150,7 @@ cd ai-sa-skills && ./install.sh
 | 2 | Where should your customer folders live? | `~/work/customers` (default) | Where each customer's `CLAUDE.md` goes |
 | 3 | Your Jira site | `yourcompany.atlassian.net` (offered automatically once `acli` is signed in) | For ticket links |
 | 4 | Your Jira project key | `ABC` | Your tickets go to *your* project, not someone else's |
+| 5 | Optional: your team's base Google Drive folder for customer projects | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | The prep skill searches it for earlier engagements with an existing customer. If you skip it, the skill asks for folders when it needs them |
 
 It also installs the Drive helper's Python libraries, then shows which sign-ins are still needed.
 Your answers are saved in `~/.config/sa-skills/config.json` and offered as defaults next time.
@@ -263,7 +264,7 @@ link.
 
 | Path | What it is |
 |---|---|
-| `install.sh` | Asks the four questions, then installs the skills and the Drive helper's libraries |
+| `install.sh` | Asks the questions, then installs the skills and the Drive helper's libraries |
 | `ACCESS-AND-SETUP.md` | Full setup: credentials step by step, what works and what's blocked, troubleshooting |
 | `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `references/` |
 | `claude-code/customer-session-prep/` | The prep skill: `SKILL.md` |

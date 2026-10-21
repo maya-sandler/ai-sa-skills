@@ -68,30 +68,41 @@ read -r -p "Jira project key [${prev_project:-none}]: " project_key
 jira_project="$(printf '%s' "${project_key:-$prev_project}" | tr '[:lower:]' '[:upper:]')"
 [ -n "$jira_project" ] || { echo "A Jira project key is needed; stopping."; exit 1; }
 
+# 3b. Optional: the team's base Drive folder for customer projects (for engagement history).
+prev_history="$(saved history_drive_folder)"
+echo
+echo "Optional: your team's base Google Drive folder for customer projects. The prep skill"
+echo "searches it (through Glean) for earlier engagements with a customer. Press Enter to skip."
+read -r -p "Base Drive folder URL [${prev_history:-none}]: " history
+history_drive_folder="${history:-${prev_history:-none}}"
+history_drive_folder="${history_drive_folder%%\?*}"
+
 skills_t="$(tilde "$skills_dir")"
 customers_t="$(tilde "$customers_dir")"
 echo
 echo "Skills:           $skills_t"
 echo "Customer folders: $customers_t"
 echo "Jira:             project $jira_project on $jira_site"
+echo "History folder:   $history_drive_folder"
 read -r -p "Go ahead? [Y/n]: " ok
 case "${ok:-Y}" in [Yy]*) ;; *) echo "Nothing changed."; exit 0 ;; esac
 
 # 4. Remember the answers.
 mkdir -p "$CONFIG_DIR" "$customers_dir" "$skills_dir"
-python3 -I -c 'import json,sys; k=["skills_dir","customers_dir","jira_site","jira_project"]; json.dump(dict(zip(k, sys.argv[1:5])), open(sys.argv[5], "w"), indent=2)' \
-  "$skills_t" "$customers_t" "$jira_site" "$jira_project" "$CONFIG"
+python3 -I -c 'import json,sys; k=["skills_dir","customers_dir","jira_site","jira_project","history_drive_folder"]; json.dump(dict(zip(k, sys.argv[1:6])), open(sys.argv[6], "w"), indent=2)' \
+  "$skills_t" "$customers_t" "$jira_site" "$jira_project" "$history_drive_folder" "$CONFIG"
 
 # 5. Install the skills, filling in the folder paths and Jira settings.
 for s in "${SKILLS[@]}"; do
   rm -rf "${skills_dir:?}/$s"
   cp -R "$SRC/$s" "$skills_dir/$s"
   find "$skills_dir/$s" -name __pycache__ -prune -exec rm -rf {} +
-  python3 -I - "$skills_dir/$s" "$skills_t" "$customers_t" "$jira_site" "$jira_project" <<'PY'
+  python3 -I - "$skills_dir/$s" "$skills_t" "$customers_t" "$jira_site" "$jira_project" "$history_drive_folder" <<'PY'
 import pathlib, sys
-root, skills, customers, site, project = sys.argv[1:6]
+root, skills, customers, site, project, history = sys.argv[1:7]
 values = {"{{SKILLS_DIR}}": skills, "{{CUSTOMERS_DIR}}": customers,
-          "{{JIRA_SITE}}": site, "{{JIRA_PROJECT}}": project}
+          "{{JIRA_SITE}}": site, "{{JIRA_PROJECT}}": project,
+          "{{HISTORY_DRIVE_FOLDER}}": history}
 for p in pathlib.Path(root).rglob("*"):
     if p.is_file() and p.suffix in (".md", ".py"):
         t = p.read_text()

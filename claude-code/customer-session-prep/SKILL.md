@@ -56,8 +56,13 @@ meetings" table in the latest recap, then the session plan. If you can't find th
 an earlier opportunity, a pilot, or the SA says they're picking up an account. Find that
 engagement's history before you write anything. It holds what was promised and what was
 delivered.
-- **Ask once** for the Drive folders where the earlier work might be (a parent folder of
-  customer folders is fine), unless `CLAUDE.md` or the prompt already names them.
+- **Start with the team's base Drive folder for customer projects:** `{{HISTORY_DRIVE_FOLDER}}`.
+  Customer folders sit below it, named like `YY/MM - <Customer> - <engagement>`, so one
+  customer can have several (a pilot, then an RSA). Always search it, along with any folders
+  `CLAUDE.md` or the prompt names. If the placeholder is unfilled or reads `none`, read
+  `history_drive_folder` from `~/.config/sa-skills/config.json`. If that's empty too, ask once
+  for the Drive folders where the earlier work might be (a parent folder of customer folders is
+  fine).
 - **Look inside them through Glean** (`search` with `container_filter` set to the folder URL).
   First use the customer's name as the query to find a customer folder, then use `*` with that
   folder's URL to list everything in it. The Drive helper can't do this, because it only sees
