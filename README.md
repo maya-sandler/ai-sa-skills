@@ -66,12 +66,20 @@ session plan, your tickets under the customer's epic, the customer's recent supp
 what's known about their tech stack, then saves a one-page brief as
 `<Customer> – Session Prep – <date>`:
 
-- Goal for the session and the latest status
-- **Deliver in this session:** finished tickets to show or explain, and open ones that are due
-- Their open questions, each with a draft answer or a docs link
-- Their action items to follow up on
-- Their support tickets, tech stack, and where you are in the session plan
-- All the links in one place
+- Goal for the session and the latest status (from the newest recap, or the latest Gong call if
+  it's newer)
+- **For an existing customer** picked up from an earlier engagement: where that engagement left
+  off. It shows each planned session from the old kickoff deck, checked against the Gong calls
+  as happened, partly happened or never happened, plus promises still open.
+- **Deliver in \<session name\> (\<date or date TBD\>):** finished tickets to show or explain, and
+  open ones that are due
+- The customer's open questions, each with a draft answer or a docs link
+- Action items to follow up on, split into the customer's items and LD's internal items
+- Support tickets, tech stack, and where the engagement stands in the session plan
+- All the links in one place, each labelled with the customer's name
+
+The brief always uses the customer's name and "LD" instead of "they" or "we", so it reads clearly
+when you forward it.
 
 ## How it keeps track of each customer
 
@@ -226,6 +234,15 @@ customer has several.
 ```
 /customer-session-prep
 /customer-session-prep for the 2026-11-04 session, RSA100 opportunity
+```
+
+**Picking up an existing customer:** point the skill at the earlier engagement's Drive folders.
+It finds the customer's folder through Glean and checks the old session plan against the Gong
+calls. If the new Drive folder doesn't exist yet, say so: the skill keeps the brief as a local
+draft and saves it once you send the folder.
+
+```
+/customer-session-prep use the latest Gong recording. Earlier work is in <Drive folder link>. Don't save yet, no Drive folder.
 ```
 
 If anything is missing, the skill asks for all of it in **one** message, and never guesses a

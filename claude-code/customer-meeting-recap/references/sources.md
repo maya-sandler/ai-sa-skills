@@ -6,6 +6,9 @@ Check the customer folder's `CLAUDE.md` first, then the sources below. Glean res
 | Need | Where to look |
 |---|---|
 | Gong call transcript | Glean `read_document` with the Gong URL, or Glean `search` for `<customer>` with `app: gong` |
+| Every Gong call for the account (engagement history) | Glean `search` for `<customer>` with `app: gong`, `sort_by_recency` and `num_results: 30`. Page with the cursor until there are no more results. Titles often don't match session names, so match by date and transcript |
+| Earlier engagement folders (another SA's, a pilot) | Glean `search` with the customer's name and `container_filter` set to the parent folder URL to find the customer folder, then `query: *` with that folder's URL to list its decks and sheets. The Drive helper only sees Docs it created, so it lists nothing here |
+| Internal account overview | Slack `#ask-riley` threads that mention the account ID. Read the thread replies, since the search result often shows only the question |
 | Recaps, prep briefs, transcripts the skills saved | Drive helper: `gdrive.py list --folder <ID> --contains "<Meeting Recap / Session Prep / Transcript>"`, then `gdrive.py read --id <DOC_ID>`. Shows new Docs right away (Glean can take a while to index them) |
 | Other Drive folder contents | Glean `search` with `query: *` and `container_filter` set to the folder URL, then `read_document` on the results |
 | Drive folder, Salesforce opportunity, Vitalstatistix, session plan | **Per opportunity.** Only from the SA's prompt, that opportunity's `CLAUDE.md` entry, its Drive folder (newest recap for that opportunity, other docs), or the SA's answer. A new opportunity: ask whether to reuse each link from an existing opportunity or use a new one. See the recap skill's Step 1 |

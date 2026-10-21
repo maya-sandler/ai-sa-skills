@@ -1,6 +1,6 @@
 ---
 name: customer-session-prep
-description: Prepare a short pre-meeting brief for an upcoming LaunchDarkly customer session and save it as a Google Doc in the customer's Drive folder. Covers latest status, what I owe the customer this session (from my Jira tickets via acli), their open questions, support tickets they opened, tech stack and where we are in the session plan. Use when the user (a LaunchDarkly Solutions Architect) asks to prep for, get ready for, or brief them on an upcoming customer meeting, session or call, usually from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
+description: Prepare a short pre-meeting brief for an upcoming LaunchDarkly customer session and save it as a Google Doc in the customer's Drive folder. Covers latest status, where any earlier engagement left off (which planned sessions really happened, from older Drive folders and Gong calls), what I owe the customer this session (from my Jira tickets via acli), the customer's open questions, support tickets the customer opened, tech stack and where the engagement stands in the session plan. Works for a new customer and for an existing customer (an existing logo) being picked up again. Use when the user (a LaunchDarkly Solutions Architect) asks to prep for, get ready for, or brief them on an upcoming customer meeting, session or call, usually from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
 ---
 
 # Customer Session Prep Brief (Claude Code)
@@ -49,8 +49,21 @@ The brief's header names the opportunity:
 `**Session:** <#/name> · <topic> · <opportunity name> · <attendees>`.
 
 Find the **upcoming session date and topic** in this order: what the SA said, the "Scheduled
-meetings" table in the latest recap, then the session plan. If you can't find the date, say
-"next session" and keep going. Don't ask.
+meetings" table in the latest recap, then the session plan. If you can't find the date, write
+"date TBD" and keep going. Don't ask.
+
+**Existing customer (an existing logo).** This customer had an earlier engagement: another SA,
+an earlier opportunity, a pilot, or the SA says they're picking up an account. Find that
+engagement's history before you write anything. It holds what was promised and what was
+delivered.
+- **Ask once** for the Drive folders where the earlier work might be (a parent folder of
+  customer folders is fine), unless `CLAUDE.md` or the prompt already names them.
+- **Look inside them through Glean** (`search` with `container_filter` set to the folder URL).
+  First use the customer's name as the query to find a customer folder, then use `*` with that
+  folder's URL to list everything in it. The Drive helper can't do this, because it only sees
+  Docs it created itself.
+- **Record the earlier folder in `CLAUDE.md` as reference only.** Save new Docs only to the
+  current opportunity's Drive folder. If there isn't one yet, see Step 4.
 
 ## Step 2: Gather (in parallel where possible)
 
@@ -58,6 +71,10 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
 
 1. **Latest recaps.** Run `list --folder <ID> --contains "Meeting Recap"`, then `read` the newest
    one or two. If there aren't any, look for recap or notes docs in the folder through Glean.
+   - **Latest call, if it has no recap:** list the customer's Gong calls (Glean `search` for
+     `<customer>` with `app: gong` and `sort_by_recency`). If the newest call is newer than the
+     newest recap, read its whole transcript with `read_document`. Use it for the latest status,
+     open questions and action items. If the SA names a call, use that one.
 2. **Session plan.** Use Glean `search` with `container_filter` set to the Drive folder URL.
    Work out which session comes next, what it covers, and its success criteria.
 3. **My tasks (acli):**
@@ -77,30 +94,60 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
 6. **Tech stack.** Use `CLAUDE.md`, earlier recaps, the handoff/discovery docs and Glean:
    languages, LaunchDarkly SDKs (server-side and client-side), Relay Proxy, cloud/infra, data
    warehouse, CI/CD, observability, integrations.
-7. **Customer action items.** List the customer's open items from the last recap, to follow up
-   on.
+7. **Action items.** List the open items from the last recap or call, to follow up on. Split them
+   by owner: the customer's items, and LD people's items (AE, CSM, SE).
+8. **Engagement history (existing customer only).** Work out what was delivered before. Don't
+   rely on what someone says was delivered.
+   - **Planned sessions:** take them from the earlier engagement's kickoff deck or session plan,
+     e.g. Platform Readiness S0, S1, S2, … with each session's name and phase.
+   - **Calls:** list every Gong call for the account (Glean `search`, `<customer>`, `app: gong`,
+     `sort_by_recency`, `num_results: 30`). Page through until there are no more results.
+   - **Match each planned session to a call.** Use dates: a session's deck is usually created
+     the same day as its call. Gong titles often differ from session names (S1 Project
+     Architecture might be called "Implementation Kickoff"), so check the transcript when a match
+     isn't clear. Mark each session ✅ happened, ⚠️ partly happened (topics or deliverables left
+     open), or ❌ never happened.
+   - **Read the transcript of the last session that happened.** Note what was promised and never
+     delivered, such as a role JSON, an SSO session or a doc.
+   - **Open the earlier worksheets** (prerequisites, custom roles planning). Say whether they
+     were filled in with the customer's data or still hold template examples.
+   - **Gaps:** note long stretches with no calls, and whether the hours used match the sessions
+     that happened.
+   - **Account overview:** also check internal account overviews, e.g. a Slack `#ask-riley`
+     thread for the account ID. Read the replies, not just the question.
 
 Never make up facts. If a source returns nothing, write "None found".
 
 ## Step 3: Write the brief
 
 ```
-# <Customer> – Session Prep – <YYYY-MM-DD of session>
-**Session:** <#/name from session plan> · <topic> · <attendees if known>
+# <Customer> – Session Prep – <session name> (<YYYY-MM-DD or "date TBD">)
+**Session:** <#/name from session plan> · <topic> · <opportunity name> · <attendees if known>
+
 **Goal for this session:** <one sentence>
 
 ## Latest status
-- 2–4 bullets: where the engagement is, what last happened, and any risks.
+- 2–4 bullets: where the engagement is, what last happened (with the date and call link), and any risks.
 
-## Deliver in this session
+## Where the previous engagement left off (existing customer only; leave out otherwise)
+| Planned session (<earlier deck>) | Phase | Happened? | Evidence |
+| <S1 name> | <phase> | ✅ <date> / ⚠️ Partly, <date> / ❌ | <deck link>, <Gong link and title>, one-line outcome |
+- Promises still open from the last session that happened: <item> (<who>, <date>)
+- Worksheets never filled in: <links>
+- Suggested pickup: <which unfinished sessions to finish first, and why>
+
+## Deliver in <session name> (<YYYY-MM-DD or "date TBD">; <who schedules it, if not booked>)
 - ✅ <Done task> → show/explain: <what to demo or say> ([KEY-123](https://{{JIRA_SITE}}/browse/KEY-123))
 - ⚠️ <Still-open task due by now> → <suggested way to handle it> ([KEY-124](...))
 
-## Their open questions
-- <Question> → <draft answer / doc link / "need to find out from X">
+## <Customer> open questions
+- <Question> (<who asked>, <date>) → <draft answer / doc link / "need to find out from X">
 
-## Follow up on (their action items)
+## Follow up on (<Customer> action items)
 - <Owner>: <item> (due <date>)
+
+## Follow up on (LD internal action items)
+- <LD owner>: <item> (promised <date>)
 
 ## Support tickets
 | Ticket | Subject | Status | Opened |
@@ -108,29 +155,56 @@ Never make up facts. If a source returns nothing, write "None found".
 ## Tech stack
 One or two lines: languages · LD SDKs · Relay Proxy · cloud/infra · warehouse · CI/CD · observability · integrations
 
-## Session plan: where we are
-- Done: <sessions/topics> · **Today:** <topic> · Next: <topic>
+## Session plan: where the <Customer> engagement stands
+- Done: <sessions/topics, with dates> · **Upcoming (<session name>, <date or "date TBD">):** <topic> · Next: <topic>
 
 ## Links
-Drive folder · Session plan · Last recap · Salesforce opp · Vitalstatistix · Jira epic · Last call recording
+- <Customer> Drive folder · <Customer> previous engagement folder (existing customer only)
+- Session plan · Last recap
+- <Customer> current Salesforce opportunity · Vitalstatistix <Customer> account
+- Jira epic · Last call recording (Gong, <date>)
 ```
 
-Rules: use absolute dates, make every ticket and doc a clickable link, and keep each section
-to 5 bullets at most.
+Rules:
+- Use absolute dates, and make every ticket, doc and call a clickable link.
+- Keep each section to 5 bullets at most. The history table doesn't count toward this.
+- **Name things explicitly.** Never write "they", "them" or "their" for the customer, or "we",
+  "us" or "our" for LaunchDarkly. Write the customer's name (e.g. "Acme open questions", "Acme
+  uses New Relic") and "LD". This applies to headings, bullets and link labels. Leave quotes
+  exactly as spoken.
+- **Label every link** with the customer and what it is ("Acme current Salesforce opportunity",
+  not "Salesforce phase").
+- **Make clear which session a section is about.** With history in the brief, "this session"
+  is ambiguous, so every heading about the upcoming session names it and gives its date or
+  "date TBD".
+- **Keep owners apart.** Never list LD people's action items under the customer's heading.
 
 ## Step 4: Save to Drive and link
 
-1. Save the brief:
+1. **No Drive folder yet, or the SA says not to save:** don't upload. Keep the draft in the
+   scratchpad, give the SA its full path and the 3-line preview, and ask for the folder. Once
+   the SA gives it, add it to `CLAUDE.md` and save.
+2. Save the brief:
    `save --folder <ID> --name "<Customer> – Session Prep – <YYYY-MM-DD>" --file <scratchpad>/prep.md`.
-   If a brief already exists for that date, this updates it.
-2. Delete the scratchpad file.
-3. In chat, give the Doc link (`webViewLink`) first, then a 3-line preview: the goal, the top
+   If the date isn't known, use `<session name> (date TBD)` in place of the date. If a brief with
+   that name already exists, this updates it.
+3. **Changes to a brief that's already saved:** run `read --id <DOC_ID>` (its output is the
+   Markdown) into the scratchpad, edit that file, and `save` it under the same name. Don't
+   rebuild the brief from scratch, because the SA may have edited the Doc. A renamed Drive
+   folder keeps its ID, so the same `--folder` still works.
+4. Delete the scratchpad file.
+5. In chat, give the Doc link (`webViewLink`) first, then a 3-line preview: the goal, the top
    thing to deliver, and the most important open question.
 
 Before you finish, update `CLAUDE.md` with what this run learned, following "Keep CLAUDE.md
-current" at the end of the recap skill. For a prep run that's usually: the epic key, if you
-found it; the session plan link; team members and tech stack facts from the recaps and docs
-you read. List what changed in one line in chat.
+current" at the end of the recap skill. For a prep run that's usually:
+- the epic key, if you found it;
+- the session plan link;
+- team members and tech stack facts from the recaps and docs you read;
+- for an existing customer: the earlier engagement folder (reference only), which planned
+  sessions happened or didn't, and the promises still open.
+
+List what changed in one line in chat.
 
 If `acli` reports `unauthorized`, keep going without Jira: work out the SA's tasks from the
 latest recap, say the Jira status wasn't checked, and tell the SA their API token needs to be
