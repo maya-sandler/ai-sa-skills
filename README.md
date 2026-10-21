@@ -157,22 +157,90 @@ It never asks for, reads or prints a token or secret.
 Run `./install.sh` again afterwards: it fills in your Jira site for you and shows that both
 sign-ins are done.
 
-## Use
+## How to use it best
 
-Open a Claude Code session in the customer's folder (e.g. `~/work/customers/acme`). For a new
-customer, open one in your customers folder; the skill creates the customer's folder.
+### 1. Work in Claude Code, one project per customer
 
-| When | Say | You get |
-|---|---|---|
-| After a call | "Recap this call: \<Gong link\>" (or paste the transcript) | A recap Google Doc and Jira tickets, linked in the chat |
-| New customer or opportunity | Add the Drive folder and Salesforce link to your prompt | A new entry in the customer's `CLAUDE.md`; it asks for anything missing |
-| Before a call | "Prep me for the next \<customer\> session" | A one-page prep Google Doc, linked in the chat |
+Use **Claude Code**: the Claude desktop app's **Code tab**, or `claude` in a terminal. Not the
+Chat tab, where the skills can't reach Jira or Drive.
 
-The skills create tickets without asking first; ask Claude afterwards if you want to change any.
-Rerunning a skill for the same date updates that day's Doc instead of making a copy.
+Give each customer **its own project**: a folder named after the customer inside your customers
+folder, e.g. `~/work/customers/acme`. Always start that customer's sessions there:
 
-You can also use them from your phone with **Remote Control** of a session on your computer. They
-don't work in a cloud session, which has none of your tools or sign-ins.
+- **Desktop app:** in the Code tab, start a new session and choose the customer's folder.
+- **Terminal:** `cd ~/work/customers/acme && claude`.
+
+Working from the customer's folder is what makes it effortless: Claude Code loads that folder's
+`CLAUDE.md` automatically, so every session already knows the customer, its opportunities, Drive
+folders, Jira epic and team, and you don't repeat links.
+
+For a **new customer**, create the folder (`mkdir ~/work/customers/acme`) and open a session there,
+or run the first skill from your customers folder and it creates the customer's folder for you.
+Then switch to that folder for later sessions.
+
+### 2. Call the skills by name
+
+Type the skill as a slash command, followed by whatever you have for this call:
+
+| Command | When |
+|---|---|
+| `/customer-meeting-recap` | After a call: recap Doc + Jira tickets |
+| `/customer-session-prep` | Before a call: one-page prep brief |
+
+You can also just ask ("recap this call", "prep me for Thursday's session") and Claude picks the
+right skill. The slash command makes sure.
+
+### 3. Add links as needed
+
+The skill only knows what's in your prompt, the customer's `CLAUDE.md` and the opportunity's
+Drive folder. Give it links the first time, and whenever something new comes up. It saves them
+to `CLAUDE.md`, so later runs need only the call.
+
+**First recap for a new customer:** give it everything you have.
+
+```
+/customer-meeting-recap <Gong link>
+Drive folder: <Drive folder link>
+Salesforce opportunity: <Salesforce link>
+Vitalstatistix: <Vitalstatistix link>
+```
+
+**Every recap after that:** just the call. Paste the transcript instead if there's no recording.
+
+```
+/customer-meeting-recap <Gong link>
+```
+
+**A new opportunity for an existing customer:** add its Salesforce link. The skill adds a new
+opportunity to `CLAUDE.md` and asks, link by link, whether to reuse the existing Drive folder and
+Vitalstatistix links or use new ones.
+
+```
+/customer-meeting-recap <Gong link>
+New opportunity: <new Salesforce link>
+```
+
+**Before a call:** name the session or date if it isn't the next one, and the opportunity if the
+customer has several.
+
+```
+/customer-session-prep
+/customer-session-prep for the 2026-11-04 session, RSA100 opportunity
+```
+
+If anything is missing, the skill asks for all of it in **one** message, and never guesses a
+link.
+
+### 4. Review, then adjust
+
+- **The recap and brief are linked in the chat** as Google Docs. Rerunning a skill for the same
+  date updates that day's Doc instead of making a copy.
+- **Tickets are created without asking first.** Check them, then ask for changes in the same
+  session, e.g. "rename KEY-123 to …" or "that one is Alex's, unassign it".
+- **The skill tells you what it added to `CLAUDE.md`** at the end of each run. You can also edit
+  that file yourself, e.g. to fix a role or add a link.
+- **On your phone:** use **Remote Control** of a session running on your computer. The skills don't
+  work in a cloud session, which has none of your tools or sign-ins.
 
 ## What's in this repo
 
