@@ -48,7 +48,7 @@ from an existing one or use a new one.
 Name each opportunity `<Offering> opportunity`, adding `(<n>)` when the same offering repeats,
 for example:
 
-```
+```text
 ### RSA50 opportunity (1)
 ### RSA100 opportunity
 ### RSA50 opportunity (2)

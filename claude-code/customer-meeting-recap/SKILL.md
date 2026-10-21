@@ -69,6 +69,7 @@ A customer can have **several opportunities**: RSA50, then RSA100, then a second
 has **its own links**: Salesforce opportunity, Drive folder, Vitalstatistix and session plan.
 Some may be shared, such as one Drive folder for two opportunities. A link from the wrong
 opportunity is worse than no link, so:
+
 - **Never copy links from one opportunity to another without asking.**
 - **Never search Glean for these links and use the result on your own.**
 
@@ -97,6 +98,7 @@ each one, offer to reuse an existing opportunity's link (show it), or to have th
 one. For example:
 
 > New opportunity: **RSA100 opportunity**. For each link, reuse one or send a new one:
+>
 > - **Drive folder:** reuse RSA50 opportunity (1)'s Drive folder, or a new folder?
 > - **Vitalstatistix:** reuse RSA50 opportunity (1)'s Vitalstatistix link, or a new account?
 > - **Session plan:** a new link, or skip?
@@ -105,6 +107,7 @@ Wait for the answer before saving anything to Drive or creating tickets.
 
 **3. Existing opportunity: fill in missing links from its own sources.** For each link the
 entry doesn't have, stop at the first source that has it:
+
 1. The SA's prompt.
 2. The **Customer links** section of the newest recap in the opportunity's Drive folder **that
    names this opportunity** (`list --folder <ID> --contains "Meeting Recap"`, then `read`).
@@ -152,7 +155,7 @@ Use them to tell what's new and to mark earlier action items as done or still op
 Use this structure. Keep each bullet to one line, and be specific: name flags, SDKs,
 environments, numbers and people.
 
-```
+```text
 # <Customer> – Meeting Recap – <YYYY-MM-DD>
 **Opportunity:** <opportunity name from CLAUDE.md, e.g. RSA50 opportunity (1)>
 **Attendees:** <customer people (role)> · <LaunchDarkly people (role)>
@@ -198,6 +201,7 @@ opportunity read their links from it; the Opportunity line tells them which oppo
 belongs to when several share a Drive folder.
 
 Rules:
+
 - Turn relative dates ("next Tuesday") into absolute dates, using the meeting date.
 - If the call doesn't give a due date, use `TBD`. Don't make one up.
 - **LaunchDarkly team** items are anything someone at LaunchDarkly committed to: the SA, the AE,
@@ -249,6 +253,7 @@ python3 {{SKILLS_DIR}}/customer-meeting-recap/scripts/jira_ticket.py \
 ```
 
 **Assignee:**
+
 - **The SA's own task:** omit `--unassigned`, and the script assigns it to the SA. The SA is the
   person signed in to `acli`; their name is in `CLAUDE.md`'s Team list, marked SA.
 - **Anyone else's task:** pass `--unassigned`, and the ticket is created with no assignee. Don't
@@ -259,6 +264,7 @@ The script converts the Markdown for Jira and prints the key, URL and assignee. 
 `warnings` (parent or due date not set), pass them on to the SA.
 
 Summary rules:
+
 - **Format:** `<Owner first name>: <task>`. The owner is the person doing it, so the SA can
   see at a glance which tickets they only need to follow up on. Use the SA's own first name for
   their tasks.
@@ -270,7 +276,7 @@ Summary rules:
 
 Description template (keep these exact headings):
 
-```
+```text
 ## The ask
 <One or two sentences: what to do.>
 

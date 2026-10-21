@@ -19,6 +19,7 @@ SKILLS=(customer-meeting-recap customer-session-prep)
 
 # Show paths under your home folder as ~/..., the way the skills use them.
 tilde() { case "$1" in "$HOME"*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' "$1" ;; esac; }
+# shellcheck disable=SC2088  # "~" here is a literal pattern to match, not a path to expand
 expand() { case "$1" in "~") printf '%s' "$HOME" ;; "~/"*) printf '%s/%s' "$HOME" "${1#"~/"}" ;; *) printf '%s' "$1" ;; esac; }
 saved() { [ -f "$CONFIG" ] && python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2],""))' "$CONFIG" "$1" || true; }
 

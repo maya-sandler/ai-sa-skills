@@ -88,7 +88,7 @@ Each customer gets a small local folder, e.g. `~/work/customers/acme/`, holding 
 book, not notes: the customer's Jira epic, team, latest call and tech stack, and a list of
 **opportunities**, each with its own links:
 
-```
+```text
 ## Opportunities
 ### RSA50 opportunity (1)    ← Salesforce opportunity, Drive folder, Vitalstatistix, session plan
 ### RSA100 opportunity
@@ -207,7 +207,7 @@ to `CLAUDE.md`, so later runs need only the call.
 
 **First recap for a new customer:** give it everything you have.
 
-```
+```text
 /customer-meeting-recap <Gong link>
 Drive folder: <Drive folder link>
 Salesforce opportunity: <Salesforce link>
@@ -216,7 +216,7 @@ Vitalstatistix: <Vitalstatistix link>
 
 **Every recap after that:** just the call. Paste the transcript instead if there's no recording.
 
-```
+```text
 /customer-meeting-recap <Gong link>
 ```
 
@@ -224,7 +224,7 @@ Vitalstatistix: <Vitalstatistix link>
 opportunity to `CLAUDE.md` and asks, link by link, whether to reuse the existing Drive folder and
 Vitalstatistix links or use new ones.
 
-```
+```text
 /customer-meeting-recap <Gong link>
 New opportunity: <new Salesforce link>
 ```
@@ -232,7 +232,7 @@ New opportunity: <new Salesforce link>
 **Before a call:** name the session or date if it isn't the next one, and the opportunity if the
 customer has several.
 
-```
+```text
 /customer-session-prep
 /customer-session-prep for the 2026-11-04 session, RSA100 opportunity
 ```
@@ -242,7 +242,7 @@ It finds the customer's folder through Glean and checks the old session plan aga
 calls. If the new Drive folder doesn't exist yet, say so: the skill keeps the brief as a local
 draft and saves it once you send the folder.
 
-```
+```text
 /customer-session-prep use the latest Gong recording. Earlier work is in <Drive folder link>. Don't save yet, no Drive folder.
 ```
 
@@ -268,6 +268,25 @@ link.
 | `ACCESS-AND-SETUP.md` | Full setup: credentials step by step, what works and what's blocked, troubleshooting |
 | `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `references/` |
 | `claude-code/customer-session-prep/` | The prep skill: `SKILL.md` |
+| `.github/workflows/` | Checks and Claude review that run on every pull request (see below) |
+| `.github/scripts/` | The privacy scan and docs check those workflows run |
+
+## Checks on every pull request
+
+Changes go to `main` through pull requests. Each one runs:
+
+| Check | What it does | Fails when |
+|---|---|---|
+| **Privacy scan** | Scans every file and the PR's commit messages | A link isn't on the allowlist of public setup pages, or there's a real email address, a real-looking Jira key, an account or Salesforce ID, or a token |
+| **Code and docs** | `shellcheck` on `install.sh`, compiles the Python scripts, checks Markdown formatting and that every relative link in the docs works, and that every `{{PLACEHOLDER}}` in the skills is one `install.sh` fills in | Any of these fails |
+| **README updated with code changes** | Compares what the PR changed | The skills or `install.sh` changed but `README.md` and `ACCESS-AND-SETUP.md` didn't. Add the `no-docs-needed` label if nothing users see has changed |
+| **Claude review** | Claude reviews the PR and leaves comments: anything that could identify a customer or colleague (which the scan can't catch, since a public list of names to block would itself leak them), bugs in the skills and scripts, and which parts of the README or guide are now out of date | It comments rather than fails; read its comments before merging |
+
+To run the same checks on your computer before pushing:
+
+```bash
+python3 .github/scripts/privacy_scan.py && python3 .github/scripts/docs_check.py && shellcheck install.sh && npx markdownlint-cli2 "**/*.md"
+```
 
 ## Rules for this repo
 

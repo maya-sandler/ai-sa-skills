@@ -1,0 +1,67 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  privacy:
+    name: Privacy scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: No customer data, links, real emails or secrets
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python3 .github/scripts/privacy_scan.py --messages "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          else
+            python3 .github/scripts/privacy_scan.py
+          fi
+
+  code:
+    name: Code and docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell script (shellcheck)
+        run: shellcheck install.sh
+      - name: Python scripts compile
+        run: python3 -m py_compile claude-code/*/scripts/*.py .github/scripts/*.py
+      - name: README and guide links, skill placeholders
+        run: python3 .github/scripts/docs_check.py
+      - name: Markdown formatting
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: "**/*.md"
+
+  docs-updated:
+    name: README updated with code changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Code changes come with README or guide changes
+        env:
+          SKIP: ${{ contains(github.event.pull_request.labels.*.name, 'no-docs-needed') }}
+        run: |
+          changed="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
+          echo "Changed files:"; echo "$changed"
+          code="$(echo "$changed" | grep -E '^(claude-code/|install\.sh)' || true)"
+          docs="$(echo "$changed" | grep -E '^(README\.md|ACCESS-AND-SETUP\.md)$' || true)"
+          if [ -n "$code" ] && [ -z "$docs" ]; then
+            if [ "$SKIP" = "true" ]; then
+              echo "::notice::Code changed without README/guide changes; skipped because of the no-docs-needed label."
+            else
+              echo "::error::This PR changes the skills or install.sh but not README.md or ACCESS-AND-SETUP.md. Update them, or add the 'no-docs-needed' label if nothing users see has changed."
+              exit 1
+            fi
+          fi
+          echo "OK"

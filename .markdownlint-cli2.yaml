@@ -1,0 +1,12 @@
+# Markdown rules for the README, guide and skills. Turned off: rules that fight how these
+# files are written (long lines, inline HTML-like placeholders such as <Customer>, emphasis
+# used as labels, and skill files that start with YAML frontmatter instead of a heading).
+config:
+  MD013: false   # line length
+  MD033: false   # inline HTML (catches <placeholders>)
+  MD036: false   # emphasis used as a heading
+  MD041: false   # first line must be a heading
+  MD024:
+    siblings_only: true   # same heading text is fine in different sections
+ignores:
+  - ".git/**"

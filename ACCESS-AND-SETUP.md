@@ -96,7 +96,7 @@ step has worked. `brew trust --json=v1` should list `atlassian/acli` under `"tap
 
 **A2. Create a Jira API token.** It's in your Atlassian account settings, not Jira's Personal settings.
 
-1. Go to https://id.atlassian.com/manage-profile/security/api-tokens (or in Jira, click your
+1. Go to <https://id.atlassian.com/manage-profile/security/api-tokens> (or in Jira, click your
    profile picture → **Manage account** → **Security** → **Create and manage API tokens**).
 2. Click **Create API token**, the plain one, not "with scopes".
 3. Name it (e.g. `acli-claude-code`), pick an expiry date, click **Create**, then click **Copy**.
@@ -125,21 +125,21 @@ You should see `✓ Authentication successful`. To check later, run `acli jira a
 
 ### Part B: Google Drive (about 15 minutes)
 
-**B1. Create a Google Cloud project:** go to https://console.cloud.google.com/projectcreate
+**B1. Create a Google Cloud project:** go to <https://console.cloud.google.com/projectcreate>
 
 - **Name:** e.g. `ai-sa-skills-<yourname>`.
 - **Organization / Location:** must be **your company's Google Workspace organization**, not "No organization".
 - After it's created, select it in the project picker at the top.
 
-**B2. Enable the Drive API:** go to https://console.cloud.google.com/apis/library/drive.googleapis.com.
+**B2. Enable the Drive API:** go to <https://console.cloud.google.com/apis/library/drive.googleapis.com>.
 Check that the top bar shows your project, then click **Enable**.
 
-**B3. Set up the consent screen:** go to https://console.cloud.google.com/auth/overview and click **Get started**.
+**B3. Set up the consent screen:** go to <https://console.cloud.google.com/auth/overview> and click **Get started**.
 
 - **App name:** `SA skills`; use your email for support and contact.
 - **Audience:** **Internal**. That skips Google's app review and the "unverified app" warning.
 
-**B4. Create the OAuth client:** go to https://console.cloud.google.com/auth/clients and click **Create client**.
+**B4. Create the OAuth client:** go to <https://console.cloud.google.com/auth/clients> and click **Create client**.
 
 - **Application type:** **Desktop app**. Name it anything, then click **Create**.
 - The dialog shows the **Client ID** (ends in `.apps.googleusercontent.com`) and the
@@ -159,7 +159,6 @@ It should print `{"saved": ".../client_secret.json"}`. (If you'd rather use Goog
 and `chmod 600` it.)
 
 To check the secret without showing it, run this. A good one prints `GOCSPX- 35`:
-
 
 ```bash
 python3 -c 'import json,os; s=json.load(open(os.path.expanduser("~/.config/sa-skills/google/client_secret.json")))["installed"]["client_secret"]; print(s[:7], len(s))'
@@ -245,7 +244,7 @@ to it", ask the folder's owner to make you an editor.
 
 ## What's in this repo
 
-```
+```text
 ai-sa-skills/
 ├── README.md                    ← short overview
 ├── ACCESS-AND-SETUP.md          ← this guide

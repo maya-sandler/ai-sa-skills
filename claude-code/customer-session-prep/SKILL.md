@@ -35,6 +35,7 @@ skill's Step 1 describes. The folder ID is the last part of the Drive folder URL
 Work out which **opportunity** the session is for, and get its links, exactly as the recap
 skill's Step 1, "Links belong to one opportunity", describes
 (`{{SKILLS_DIR}}/customer-meeting-recap/SKILL.md`):
+
 - **Which opportunity:** match the prompt's Salesforce link, opportunity name or Drive folder to
   an entry. If several entries could fit, or none is named, ask which. A Salesforce link that's
   in no entry means a new opportunity.
@@ -56,6 +57,7 @@ meetings" table in the latest recap, then the session plan. If you can't find th
 an earlier opportunity, a pilot, or the SA says they're picking up an account. Find that
 engagement's history before you write anything. It holds what was promised and what was
 delivered.
+
 - **Start with the team's base Drive folder for customer projects:** `{{HISTORY_DRIVE_FOLDER}}`.
   Customer folders sit below it, named like `YY/MM - <Customer> - <engagement>`, so one
   customer can have several (a pilot, then an RSA). Always search it, along with any folders
@@ -83,9 +85,11 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
 2. **Session plan.** Use Glean `search` with `container_filter` set to the Drive folder URL.
    Work out which session comes next, what it covers, and its success criteria.
 3. **My tasks (acli):**
+
    ```bash
    acli jira workitem search --jql 'parent = <EPIC> ORDER BY status, duedate' --fields key,summary,status --json --paginate
    ```
+
    Search can't return due dates, so for each ticket that matters run
    `acli jira workitem view <KEY> --fields summary,status,duedate,description --json`.
    - **Done** tickets → *show or explain* in this session. Use the description for the details.
@@ -125,7 +129,7 @@ Never make up facts. If a source returns nothing, write "None found".
 
 ## Step 3: Write the brief
 
-```
+```text
 # <Customer> – Session Prep – <session name> (<YYYY-MM-DD or "date TBD">)
 **Session:** <#/name from session plan> · <topic> · <opportunity name> · <attendees if known>
 
@@ -171,6 +175,7 @@ One or two lines: languages · LD SDKs · Relay Proxy · cloud/infra · warehous
 ```
 
 Rules:
+
 - Use absolute dates, and make every ticket, doc and call a clickable link.
 - Keep each section to 5 bullets at most. The history table doesn't count toward this.
 - **Name things explicitly.** Never write "they", "them" or "their" for the customer, or "we",
@@ -203,6 +208,7 @@ Rules:
 
 Before you finish, update `CLAUDE.md` with what this run learned, following "Keep CLAUDE.md
 current" at the end of the recap skill. For a prep run that's usually:
+
 - the epic key, if you found it;
 - the session plan link;
 - team members and tech stack facts from the recaps and docs you read;
