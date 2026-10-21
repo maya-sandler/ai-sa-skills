@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# Credentials and personal settings never belong in this repo.
+.env
+.env.*
+client_secret*.json
+token*.json
+token.txt
+config.json
+CLAUDE.md
