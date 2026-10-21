@@ -217,7 +217,7 @@ acli jira workitem search --jql 'project = {{JIRA_PROJECT}} AND issuetype = Epic
 ```
 
 If no epic matches the customer name (ignoring case), create one. The summary is the
-customer name in **Title Case**, keeping the brand's own casing (e.g. `Acme`, `GitHub`, `eBay`):
+customer name in **Title Case**, keeping the brand's own casing (e.g. `Acme`, `BrightPath`, `iZeta`):
 
 ```bash
 python3 {{SKILLS_DIR}}/customer-meeting-recap/scripts/jira_ticket.py \
