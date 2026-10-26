@@ -141,10 +141,11 @@ the start of today to now. Keep events that:
 An event matching two customers is **unclear** (step 6). Ignore all other events, including
 internal meetings, and never read their details beyond the title, time and attendees.
 
-**6. Find each meeting's Gong call.** Search Glean with `app: gong` for the meeting title,
-sorted by recency, updated today. The call matches when it's from today, its title matches the
-meeting, and its `account:` filter is the customer's **Gong account**. The Gong call ID is the
-`id=` in its link.
+**6. Find each meeting's Gong call.** Search Glean with `app: gong`, query `*`,
+`dynamic_search_result_filters` set to `account:<Gong account>`, sorted by recency. This returns
+only that customer's calls, newest first. (A search by meeting title for calls updated today
+mostly returns other customers' calls, so use it only as a fallback.) The call matches when
+it's from today and its title matches the meeting. The Gong call ID is the `id=` in its link.
 
 - **Not found yet:** Gong or Glean is still processing. Log "waiting" and leave it for the next
   run. After 2 days, log it once as not found and stop looking.
