@@ -13,7 +13,7 @@ jobs:
     name: Privacy scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: No customer data, links, real emails or secrets
@@ -28,7 +28,7 @@ jobs:
     name: Code and docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Shell script (shellcheck)
         run: shellcheck install.sh
       - name: Python scripts compile
@@ -45,7 +45,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Code changes come with README or guide changes
