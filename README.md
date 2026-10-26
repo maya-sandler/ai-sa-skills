@@ -268,7 +268,7 @@ link.
 | `ACCESS-AND-SETUP.md` | Full setup: credentials step by step, what works and what's blocked, troubleshooting |
 | `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `references/` |
 | `claude-code/customer-session-prep/` | The prep skill: `SKILL.md` |
-| `.github/workflows/` | Checks and Claude review that run on every pull request (see below) |
+| `.github/workflows/` | The checks that run on every pull request (see below) |
 | `.github/scripts/` | The privacy scan and docs check those workflows run |
 
 ## Checks on every pull request
@@ -280,13 +280,35 @@ Changes go to `main` through pull requests. Each one runs:
 | **Privacy scan** | Scans every file and the PR's commit messages | A link isn't on the allowlist of public setup pages, or there's a real email address, a real-looking Jira key, an account or Salesforce ID, or a token |
 | **Code and docs** | `shellcheck` on `install.sh`, compiles the Python scripts, checks Markdown formatting and that every relative link in the docs works, and that every `{{PLACEHOLDER}}` in the skills is one `install.sh` fills in | Any of these fails |
 | **README updated with code changes** | Compares what the PR changed | The skills or `install.sh` changed but `README.md` and `ACCESS-AND-SETUP.md` didn't. Add the `no-docs-needed` label if nothing users see has changed |
-| **Claude review** | Claude reviews the PR and leaves comments: anything that could identify a customer or colleague (which the scan can't catch, since a public list of names to block would itself leak them), bugs in the skills and scripts, and which parts of the README or guide are now out of date | It comments rather than fails; read its comments before merging |
+
+None of these need a key or token: they run on GitHub's own runners.
 
 To run the same checks on your computer before pushing:
 
 ```bash
 python3 .github/scripts/privacy_scan.py && python3 .github/scripts/docs_check.py && shellcheck install.sh && npx markdownlint-cli2 "**/*.md"
 ```
+
+### Review each pull request with Claude Code before merging
+
+The privacy scan can't catch customer or colleague **names**, because a public list of names to
+block would itself leak them. So before merging, have Claude review the pull request from your
+own Claude Code session. It uses your normal Claude sign-in, and no key or token is stored in
+GitHub. In Claude Code, run:
+
+```text
+/code-review --comment <pull request URL>
+```
+
+It posts its findings as comments on the pull request. Ask it to check in particular:
+
+- **Privacy:** anything that names or identifies a real customer, company or colleague, any
+  customer or internal link, and any account or record ID, including in commit messages.
+- **Correctness:** skill instructions that contradict each other, steps that would fail, and
+  `{{PLACEHOLDERS}}` that `install.sh` doesn't fill in.
+- **Docs:** which parts of `README.md` or `ACCESS-AND-SETUP.md` the change makes out of date.
+
+Without `--comment`, the findings stay in your Claude Code session instead.
 
 ## Rules for this repo
 
