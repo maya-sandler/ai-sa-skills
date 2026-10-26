@@ -27,7 +27,7 @@ Write every helper command out in full; putting it in a shell variable breaks un
 | `config get [KEY]` / `config set KEY VALUE` | Reads or sets one setting in `~/.config/sa-skills/config.json`, keeping the rest |
 | `customers init --folder ID` / `customers read --folder ID` | Creates the Active Customers Doc / returns its Active rows |
 | `calls get --id ID` / `calls mark --id ID --status S ...` / `calls held` | The processed-calls log in `~/.config/sa-skills/processed-calls.json` |
-| `log add --kind activity\|audit --run RUN --text TEXT [--dry-run]` / `log flush --folder ID` | Queues log lines, then appends them to this month's log Docs |
+| `log add --kind activity\|audit --run RUN --text TEXT [--dry-run]` / `log flush --folder ID` | Queues one log line, stamped with the current time / appends the queued lines to this month's log Docs |
 | `slack-upload --url URL --file PATH` | Uploads a file's bytes to a Slack upload URL |
 
 The Drive helper (`gdrive.py`) is described in the `customer-meeting-recap` skill.
@@ -104,7 +104,9 @@ with the same first line.
 Keep a **run ID**, the local start time as `YYYYMMDD-HHMM`. Log as you go: an **activity** line
 for each step and tool call (`log add --kind activity`), and an **audit** line for each change
 made in Drive, Jira or Slack (`log add --kind audit`). In dry-run mode, add `--dry-run` to every
-log line. Log lines name a call by customer, date and Gong call ID; never put transcript text,
+log line. `log add` stamps each line with the time it runs, so run it right after the step or
+tool call it describes, in the same message as the next step's call. Never save lines up and
+add them together at the end: they'd all get the same time. Log lines name a call by customer, date and Gong call ID; never put transcript text,
 recap content, tokens or secrets in them.
 
 Handle at most **5 calls per run**; leave the rest for the next run.
