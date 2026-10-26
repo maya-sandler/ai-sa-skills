@@ -15,7 +15,7 @@ SRC="$HERE/claude-code"
 CONFIG_DIR="$HOME/.config/sa-skills"
 CONFIG="$CONFIG_DIR/config.json"
 VENV="$HOME/.local/share/sa-skills/venv"
-SKILLS=(customer-meeting-recap customer-session-prep)
+SKILLS=(customer-meeting-recap customer-session-prep customer-recap-check)
 
 # Show paths under your home folder as ~/..., the way the skills use them.
 tilde() { case "$1" in "$HOME"*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' "$1" ;; esac; }
@@ -54,7 +54,8 @@ customers_dir="$(expand "${customers:-$default_customers}")"
 # 3. Your Jira site and project (where the recap skill files your tickets).
 prev_site="$(saved jira_site)"
 if [ -z "$prev_site" ] && command -v acli >/dev/null 2>&1; then
-  prev_site="$(acli jira auth status 2>/dev/null | sed -n 's/^ *Site: *//p' | head -1)"
+  # acli exits non-zero when it isn't signed in yet; that must not stop the installer.
+  prev_site="$( (acli jira auth status 2>/dev/null || true) | sed -n 's/^ *Site: *//p' | head -1)"
 fi
 echo
 echo "Your Jira site, e.g. yourcompany.atlassian.net"
@@ -77,6 +78,16 @@ read -r -p "Base Drive folder URL [${prev_history:-none}]: " history
 history_drive_folder="${history:-${prev_history:-none}}"
 history_drive_folder="${history_drive_folder%%\?*}"
 
+# 3c. Optional: your own Drive folder for automatic recaps (Active Customers list + logs).
+prev_sa_folder="$(saved sa_drive_folder)"
+echo
+echo "Optional, for automatic recaps (customer-recap-check): your own Google Drive folder for"
+echo "the Active Customers list and the activity and audit logs. Paste the folder link, or press"
+echo "Enter to skip (you can set it later by asking Claude to set up the recap check)."
+read -r -p "Your Drive folder URL [${prev_sa_folder:-none}]: " sa_folder
+sa_folder="${sa_folder%%\?*}"; sa_folder="${sa_folder##*/folders/}"; sa_folder="${sa_folder%%/*}"
+sa_drive_folder="${sa_folder:-$prev_sa_folder}"
+
 skills_t="$(tilde "$skills_dir")"
 customers_t="$(tilde "$customers_dir")"
 echo
@@ -84,13 +95,31 @@ echo "Skills:           $skills_t"
 echo "Customer folders: $customers_t"
 echo "Jira:             project $jira_project on $jira_site"
 echo "History folder:   $history_drive_folder"
+echo "Your Drive folder: ${sa_drive_folder:-none}"
 read -r -p "Go ahead? [Y/n]: " ok
 case "${ok:-Y}" in [Yy]*) ;; *) echo "Nothing changed."; exit 0 ;; esac
 
 # 4. Remember the answers.
 mkdir -p "$CONFIG_DIR" "$customers_dir" "$skills_dir"
-python3 -I -c 'import json,sys; k=["skills_dir","customers_dir","jira_site","jira_project","history_drive_folder"]; json.dump(dict(zip(k, sys.argv[1:6])), open(sys.argv[6], "w"), indent=2)' \
-  "$skills_t" "$customers_t" "$jira_site" "$jira_project" "$history_drive_folder" "$CONFIG"
+# Merge into the existing settings, so values the skills saved themselves (such as the Slack
+# self-DM and the recap check's mode) are kept.
+python3 -I - "$CONFIG" "$skills_t" "$customers_t" "$jira_site" "$jira_project" "$history_drive_folder" "$sa_drive_folder" <<'PY'
+import json, os, sys
+path = sys.argv[1]
+keys = ["skills_dir", "customers_dir", "jira_site", "jira_project", "history_drive_folder", "sa_drive_folder"]
+try:
+    with open(path) as f:
+        cfg = json.load(f)
+except (FileNotFoundError, ValueError):
+    cfg = {}
+for k, v in zip(keys, sys.argv[2:]):
+    if v:
+        cfg[k] = v
+fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, "w") as f:
+    json.dump(cfg, f, indent=2)
+os.chmod(path, 0o600)
+PY
 
 # 5. Install the skills, filling in the folder paths and Jira settings.
 for s in "${SKILLS[@]}"; do
@@ -137,3 +166,4 @@ else echo "  ✗ Google Drive: not set up. See ACCESS-AND-SETUP.md, Part B"; fi
 echo
 echo "Next: open a Claude Code session in $customers_t/<customer>, then ask it to recap a call"
 echo "or prep for a session. The skill creates the customer's folder if it doesn't exist yet."
+echo "For automatic recaps, ask Claude to \"set up the recap check\" (see README.md)."

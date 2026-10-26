@@ -49,6 +49,47 @@ If it prints `not signed in to Google Drive`, stop and tell the SA to run the sa
 with `login` in their terminal. Never read `~/.config/sa-skills/google/` (client secret and
 token).
 
+## Unattended mode (automatic runs)
+
+The `customer-recap-check` skill runs this skill on its own, with no one watching. Its prompt
+starts with `UNATTENDED RUN` and gives the Gong link, the customer's folder, the meeting title
+and date. In an unattended run, everything below applies, and it overrides any step that says
+to ask the SA:
+
+- **Never ask and never wait.** Where a step says to ask, do what this table says instead, and
+  carry on with the rest.
+
+  | Missing or unclear | What to do |
+  |---|---|
+  | The opportunity's **Drive folder** (not in the prompt or `CLAUDE.md`) | Stop before writing anything. Return `held` with `needs: ["drive_folder"]` |
+  | **Which opportunity** (several match, and they don't share one Drive folder) | Stop before writing anything. Return `held` with `needs: ["opportunity"]` and the candidates' names |
+  | Salesforce opportunity, Vitalstatistix or session plan link | Write `Not found` for it, save the recap, and **create no tickets**. Return `held` with `needs` naming the links, and the tickets you would create |
+  | A **new opportunity** | Stop before writing anything. Return `held` with `needs: ["new_opportunity"]` |
+
+- **Never take a link from a Glean search,** not even as a suggestion. Only the prompt, the
+  customer's `CLAUDE.md` and the opportunity's Drive folder count.
+- **Tickets:** when nothing is missing, create them as usual. When the run is held, create none,
+  and return what you would have created (title, owner, due date) so they can be created later.
+- **Don't post the recap in chat.** End with the result block below, and nothing after it.
+
+End every unattended run with exactly one block like this:
+
+```text
+RECAP_RESULT
+{"status": "done" | "held" | "error",
+ "gong_call_id": "<id>",
+ "recap": {"name": "<Doc name>", "link": "<webViewLink>"} | null,
+ "tickets": [{"key": "KEY-123", "title": "Alex: …", "link": "<url>"}],
+ "held_tickets": [{"title": "Alex: …", "owner": "Alex", "due": "YYYY-MM-DD"}],
+ "needs": ["drive_folder" | "opportunity" | "new_opportunity" | "salesforce" | "vitalstatistix" | "session_plan"],
+ "question": "<one sentence for the SA, if held>",
+ "error": "<what failed, if error>"}
+```
+
+When the check later passes in the SA's answer (its prompt starts with `UNATTENDED RUN, RESUME`),
+save the answer to `CLAUDE.md` as Step 1 describes. Then finish what was held: write the recap
+if none was saved, or create the held tickets and add their keys to the recap's Jira column.
+
 ## Step 1: Customer context
 
 The session usually runs in the customer folder (`{{CUSTOMERS_DIR}}/<customer>/`). Its
@@ -156,7 +197,7 @@ environments, numbers and people.
 # <Customer> – Meeting Recap – <YYYY-MM-DD>
 **Opportunity:** <opportunity name from CLAUDE.md, e.g. RSA50 opportunity (1)>
 **Attendees:** <customer people (role)> · <LaunchDarkly people (role)>
-**Recording:** <Gong/Zoom link>
+**Recording:** <Gong/Zoom link> (Gong call ID <id>)
 
 ## Summary
 3–5 bullets: goal of the call, where the engagement stands, the most important outcome.
@@ -296,7 +337,12 @@ If a link is missing, write `Not found` instead of removing the line.
 ## Step 7: Save to Drive and report
 
 1. Fill in the recap's Jira column with the new ticket keys, then save it:
-   `save --folder <ID> --name "<Customer> – Meeting Recap – <YYYY-MM-DD>" --file <scratchpad>/recap.md`
+   `save --folder <ID> --name "<Customer> – Meeting Recap – <YYYY-MM-DD>" --file <scratchpad>/recap.md`.
+   Before saving, check `list --folder <ID> --contains "Meeting Recap – <YYYY-MM-DD>"`:
+   - **A recap for the same date already names this Gong call ID** on its Recording line: it's
+     the same call, so update that Doc (save under its exact name).
+   - **It names a different call:** this is a second meeting that day, so name this one
+     `<Customer> – Meeting Recap – <YYYY-MM-DD> – <meeting title>`, and neither overwrites the other.
 2. Delete the scratchpad files you created.
 3. In chat, link the recap Doc first (its `webViewLink`), then post the full recap and a ticket list:
    `- [KEY-123](https://{{JIRA_SITE}}/browse/KEY-123) Alex: …`

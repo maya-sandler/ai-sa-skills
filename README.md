@@ -1,6 +1,6 @@
 # ai-sa-skills
 
-Two Claude Code skills that take the busywork out of running customer engagements as a
+Three Claude Code skills that take the busywork out of running customer engagements as a
 Solutions Architect (SA): writing up each call, filing the follow-up tasks, and getting ready
 for the next session.
 
@@ -9,6 +9,9 @@ for the next session.
   LaunchDarkly team committed to.
 - **`customer-session-prep`**: before a call, writes a one-page prep brief (a Google Doc in the
   same folder) so you know in two minutes what to deliver, what's still open, and what to ask.
+- **`customer-recap-check`**: runs the recap for you. Every hour it finds today's finished calls
+  with your active customers, recaps the new ones, and tells you in your Slack self-DM, asking
+  there when something is missing.
 
 ## The problem these solve
 
@@ -31,6 +34,9 @@ your own computer, where they can use:
 | Reading call transcripts, Salesforce, Drive, Jira and Slack | **Glean** (Claude connector) | Already searches everything you have access to |
 | Creating Jira epics and tickets | **Atlassian CLI (`acli`)** with your Jira **API token** | Writes to Jira without an OAuth app, which company admins often block |
 | Saving and reading Google Docs | A small **Drive helper** (`gdrive.py`) with your own Google **OAuth client** | Writes real Google Docs into the customer's folder, and can only touch the Docs it created |
+| Finding today's customer meetings (recap check) | **Google Calendar** (Claude connector) | Knows when each meeting ended and who attended |
+| Telling you a recap is ready, and asking you questions (recap check) | **Slack** (Claude connector): posts to your self-DM by sharing a small file, reads your replies | The connector's file-sharing tools are the ones that can post; it never posts anywhere but your self-DM |
+| Running on a schedule (recap check) | A Claude Code **scheduled task** in the desktop app | Runs on your Mac with your sign-ins; nothing runs in the cloud |
 
 ## What each skill produces
 
@@ -80,6 +86,32 @@ what's known about their tech stack, then saves a one-page brief as
 
 The brief always uses the customer's name and "LD" instead of "they" or "we", so it reads clearly
 when you forward it.
+
+### `customer-recap-check`
+
+You set it up once ("set up the recap check"). After that, a scheduled task runs it every hour in
+your working hours, and you don't prompt anything:
+
+1. **Reads your Active Customers list,** a Google Doc in your own Drive folder that you edit from
+   any device: one row per customer you're working with (name, folder, Gong account, words in
+   your meeting titles, Active or Paused). No links or email domains go in it.
+2. **Finds today's finished meetings** with those customers in Google Calendar, where you were an
+   attendee.
+3. **Waits for each call's Gong recording** to appear in Glean, matched by the customer's Gong
+   account.
+4. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
+   each recap records, so a call is never recapped twice.
+5. **Runs `customer-meeting-recap` unattended:** it never stops to ask. If the Drive folder or the
+   opportunity is unknown, it holds the call; if only other links are missing, it saves the recap
+   and holds the tickets.
+6. **Posts to your Slack self-DM:** "recap ready" with the links, or a question you answer by
+   replying in the post's thread. The next run reads your reply and finishes the call. A Claude
+   notification on your Mac and phone pings you too, since Slack doesn't notify you about posts
+   made as you.
+7. **Logs everything** to two monthly Google Docs in your Drive folder: an **activity log** (every
+   run and tool call) and an **audit log** (every change made in Drive, Jira or Slack).
+
+It starts in **dry-run mode**: it only reports what it would do, until you switch it to live.
 
 ## How it keeps track of each customer
 
@@ -142,7 +174,7 @@ git clone <this repo's URL>
 cd ai-sa-skills && ./install.sh
 ```
 
-`install.sh` asks four questions and one optional one, then fills your answers into the skills and installs them:
+`install.sh` asks four questions and two optional ones, then fills your answers into the skills and installs them:
 
 | # | Question | Example answer | Why it's asked |
 |---|---|---|---|
@@ -151,9 +183,11 @@ cd ai-sa-skills && ./install.sh
 | 3 | Your Jira site | `yourcompany.atlassian.net` (offered automatically once `acli` is signed in) | For ticket links |
 | 4 | Your Jira project key | `ABC` | Your tickets go to *your* project, not someone else's |
 | 5 | Optional: your team's base Google Drive folder for customer projects | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | The prep skill searches it for earlier engagements with an existing customer. If you skip it, the skill asks for folders when it needs them |
+| 6 | Optional: your own Google Drive folder for automatic recaps | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | Holds the recap check's Active Customers list and its activity and audit logs. If you skip it, setting up the recap check asks for it |
 
 It also installs the Drive helper's Python libraries, then shows which sign-ins are still needed.
 Your answers are saved in `~/.config/sa-skills/config.json` and offered as defaults next time.
+Rerunning it keeps the settings the skills saved there themselves, such as your Slack self-DM.
 It never asks for, reads or prints a token or secret.
 
 **Then sign in, once (about 25 minutes):** follow Parts A and B of
@@ -260,6 +294,24 @@ link.
 - **On your phone:** use **Remote Control** of a session running on your computer. The skills don't
   work in a cloud session, which has none of your tools or sign-ins.
 
+### 5. Let recaps happen on their own
+
+Once the recap and its links work for a customer, let `customer-recap-check` do it for you. In
+any Claude Code session, say:
+
+| Say | It does |
+|---|---|
+| "Set up the recap check" | Asks for your Drive folder, creates the Active Customers Doc there, finds your Slack self-DM, and schedules the hourly check (it asks which hours) in **dry-run** mode |
+| "Add Acme to my active customers" | Adds a row to the Active Customers Doc (you can also edit the Doc yourself) |
+| "Switch the recap check to live" | Starts writing recaps and creating tickets; until then it only reports what it would do |
+| "Run the recap check now" | One check, right away, in this session |
+| "Pause the recap check" | Stops the schedule until you resume it |
+| "What did the recap check do today?" | Reads this month's activity and audit logs |
+
+To answer a question it asks in Slack, reply in that post's thread, e.g. with the Drive folder
+link. The desktop app must be open and your Mac awake for a check to run; a missed check runs at
+the next one.
+
 ## What's in this repo
 
 | Path | What it is |
@@ -268,6 +320,7 @@ link.
 | `ACCESS-AND-SETUP.md` | Full setup: credentials step by step, what works and what's blocked, troubleshooting |
 | `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `references/` |
 | `claude-code/customer-session-prep/` | The prep skill: `SKILL.md` |
+| `claude-code/customer-recap-check/` | The automatic recap check: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, logs, Slack uploads) |
 
 ## Rules for this repo
 

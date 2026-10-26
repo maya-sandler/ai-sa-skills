@@ -39,6 +39,10 @@ either one, and both are used only through a command-line tool.
 | Atlassian Rovo MCP connector | ❌ Blocked | Couldn't be connected. Probably the same admin policy |
 | Google Drive connector for Claude | ❌ Not enabled | Not available to Claude at the time of writing. Ask IT if that has changed |
 | Gong / Salesforce connectors | ➖ Not available | Use Glean instead |
+| **Google Calendar** connector | ✅ Works | Used by the recap check to find today's finished customer meetings |
+| **Slack** connector, posting by file share | ✅ Works | The recap check posts to your self-DM by sharing a small file with a message, and reads your replies. Only the file-upload tools can post |
+| Slack connector, plain send-message tool | ❌ Not offered | Not among the connector's tools at the time of writing; ask the admin who manages Claude connectors. The recap check would switch to it |
+| Gong webhooks | ➖ Not needed | Need a Gong admin and a public endpoint. The recap check polls instead |
 | API keys in `.env` for **Claude Desktop chat** | ❌ Won't work | Desktop chats run in a cloud sandbox and can't see your Mac's files or CLIs. That's why these skills run in Claude Code |
 
 ## Setup (about 25 minutes)
@@ -206,6 +210,44 @@ to it", ask the folder's owner to make you an editor.
 - **After a call:** "Recap this call: <Gong link>" (or paste the transcript).
 - **Before a call:** "Prep me for the next <customer> session."
 
+### Part D: Automatic recaps (optional, about 10 minutes)
+
+`customer-recap-check` recaps your customer calls on a schedule, with no prompt. It needs no new
+credential: it uses the Jira and Drive sign-ins from Parts A and B, plus three Claude connectors.
+
+**D1. Check the connectors.** In claude.ai, **Settings → Connectors**, make sure these are
+connected and enabled for Claude Code:
+
+| Connector | Tools the check uses |
+|---|---|
+| **Glean** | Search (to find each meeting's Gong call) |
+| **Google Calendar** | List events (to find today's finished meetings) |
+| **Slack** | Read channel and read thread (your self-DM only), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts |
+
+**D2. Have a Drive folder of your own** for the check's files: the Active Customers list and the
+monthly activity and audit logs. You need edit access to it. Give it to `install.sh` (question
+6), or when you set the check up.
+
+**D3. Set it up.** In any Claude Code session, say **"set up the recap check"**. It:
+
+1. Saves your Drive folder and creates the **Active Customers** Doc there. Add one row per
+   customer you're working with; no links or email domains go in it.
+2. Finds your Slack self-DM from your Slack user ID and saves it. Nothing to look up yourself.
+3. Asks which hours to run, then creates an hourly scheduled task in the desktop app.
+4. Starts in **dry-run mode**: for a while it only reports what it would do.
+
+**D4. Approve its tools once.** On the first runs, approve the tools it uses when asked
+(Calendar, Glean, Slack, and Bash for the helper scripts and `acli`), so later runs don't stop
+for permission. Turn on Claude notifications on your Mac and phone, so you're pinged when a
+recap is ready or a question waits for you.
+
+**D5. Go live** when the dry runs look right: say **"switch the recap check to live"**.
+
+The desktop app must be open and your Mac awake at check time; a missed check runs at the next
+one. Everything the check produces goes to Google Drive, Jira and your Slack self-DM; on your
+Mac it keeps only `~/.config/sa-skills/processed-calls.json` (Gong call IDs and outcomes) and
+any log lines it couldn't save to Drive yet.
+
 ## Rules for tokens and secrets
 
 - Never paste a token or client secret into a Claude chat, and never ask Claude to read
@@ -252,7 +294,8 @@ ai-sa-skills/
 ├── install.sh                   ← asks where things go, then installs (Part 0)
 └── claude-code/                 ← the skills' master copy, with placeholders
     ├── customer-meeting-recap/  (SKILL.md, scripts/jira_ticket.py, scripts/gdrive.py, references/)
-    └── customer-session-prep/   (SKILL.md)
+    ├── customer-session-prep/   (SKILL.md)
+    └── customer-recap-check/    (SKILL.md, scripts/recap_check.py), see Part D
 ```
 
 **To change the skills,** edit the master copy in `claude-code/`, not the installed copy, then
