@@ -79,7 +79,8 @@ End every unattended run with exactly one block like this:
 RECAP_RESULT
 {"status": "done" | "held" | "waiting" | "error",
  "gong_call_id": "<id>",
- "recap": {"name": "<Doc name>", "link": "<webViewLink>"} | null,
+ "opportunity": "<opportunity name from CLAUDE.md>",
+ "recap": {"name": "<Doc name>", "id": "<Doc ID>", "link": "<webViewLink>"} | null,
  "tickets": [{"key": "KEY-123", "title": "Alex: …", "link": "<url>"}],
  "needs": ["drive_folder" | "opportunity" | "new_opportunity" | "salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],
  "missing": ["salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],

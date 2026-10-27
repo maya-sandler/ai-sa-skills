@@ -115,11 +115,15 @@ your working hours, and you don't prompt anything:
    needed in the thread; a later reply is saved for the next recap. Only a missing Drive folder
    keeps the call held, since there's nowhere to save the recap, with a reminder at most once a
    day.
-6. **Posts to your Slack self-DM:** "recap ready" with the links, or a question you answer by
-   replying in the post's thread. The next run reads your reply and finishes the call. A Claude
-   notification on your Mac and phone pings you too, since Slack doesn't notify you about posts
-   made as you.
-7. **Logs everything** to two monthly Google Docs in your Drive folder: an **activity log** (every
+6. **Updates the shared meeting notes:** after each finished recap, runs `customer-shared-notes`
+   to add the meeting to the opportunity's customer-facing `<Customer> & LaunchDarkly – Meeting
+   Notes` Doc. It runs only once the recap is saved, never in dry-run mode, and never adds a
+   meeting twice.
+7. **Posts to your Slack self-DM:** "recap ready" with the links, including the shared notes, or
+   a question you answer by replying in the post's thread. The next run reads your reply and
+   finishes the call. A Claude notification on your Mac and phone pings you too, since Slack
+   doesn't notify you about posts made as you.
+8. **Logs everything** to two monthly Google Docs in your Drive folder: an **activity log** (every
    run and tool call) and an **audit log** (every change made in Drive, Jira or Slack).
 
 It starts in **dry-run mode**: it only reports what it would do, until you switch it to live.
