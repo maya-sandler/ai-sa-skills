@@ -4,6 +4,20 @@ Claude Code skills that take the busywork out of running customer engagements as
 Solutions Architect (SA): writing up each call, filing the follow-up tasks, and getting ready
 for the next session.
 
+This repo includes:
+
+- **Five Claude Code skills** (in `claude-code/`): three you prompt yourself to recap a call or
+  prep for a session, one that keeps a customer-facing Doc of all meetings, and one that runs
+  the recap for you. They're listed in the table below.
+- **An installer** (`install.sh`) and a **setup guide** ([ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md)).
+  The installer asks a few questions, installs the skills with your settings, and creates your
+  **Active Customers Doc**, the Google Doc listing the customers the skills work on. The guide
+  walks you through the Jira and Google Drive sign-ins.
+- **An automated workflow** (`customer-recap-check`): an hourly scheduled task in the Claude
+  desktop app. It finds Gong's "call is ready" emails for your Active customers, writes the
+  recap and Jira tickets, updates the customer-facing Doc, and reports in your Slack self-DM.
+  See "`customer-recap-check` workflow" below for the flowchart.
+
 | Skill | What it does | How it runs |
 |---|---|---|
 | **`customer-meeting-recap`** | After a call, turns the recording or transcript into a recap Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the LaunchDarkly team committed to | **Manual:** you prompt it (`/customer-meeting-recap`). The recap check also runs it automatically |
