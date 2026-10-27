@@ -175,6 +175,29 @@ SA answers. You may suggest Salesforce or Vitalstatistix candidates you found in
 `references/sources.md`), but present them as a question ("Is this the right opportunity?"),
 and use one only after the SA confirms it.
 
+**Ask in chat and in the SA's Slack self-DM.** Post the same question to the self-DM, so the SA
+can answer from Slack too:
+
+1. The self-DM is `slack_dm_channel` in `~/.config/sa-skills/config.json`. If it's empty, find it
+   as the `customer-recap-check` skill's "Slack self-DM" section says, and save it. Never post
+   anywhere else. If Slack isn't available, ask in chat only, and say so.
+2. Post it as that section's "To post" steps describe, starting
+   "*<Customer>* recap waiting: <the question> Reply in this thread." Keep the post's `ts`.
+3. If the call has a Gong call ID, record it, so the hourly recap check takes over if the SA
+   answers in Slack or not at all:
+   `recap_check.py calls mark --id <call ID> --status held --customer <Customer> --date <YYYY-MM-DD> --title "<meeting title>" --url <Gong link> --note <missing, comma-separated: drive_folder, opportunity, new_opportunity, salesforce, vitalstatistix, session_plan, slack_channels> --slack-ts <ts> --reminded <today>`
+   (full helper command in that skill's "Helpers").
+4. In chat, say the question is also in the self-DM, and that the SA can answer in either place.
+   If they answer in Slack, they tell you "check Slack", and you read the thread
+   (`slack_read_thread`, replies from `slack_user_id` only).
+
+When the SA answers in chat or Slack, first run `calls get --id <call ID>`. If it's `done`, the
+check has already made the recap with `Not found`: save the answer to `CLAUDE.md`, fill in that
+recap's Customer links (`read` it into the scratchpad, edit, `save` under its exact name), and
+create no new Doc or tickets. Otherwise carry
+on, and when you finish, run `calls mark --id <call ID> --status done --missing <still missing,
+or none>` and reply in the Slack thread with the recap link, so the check doesn't recap it again.
+
 **Never work out Slack channels yourself:** don't search Slack or Glean for them, and don't
 guess from channel names. Only the SA's answer counts.
 

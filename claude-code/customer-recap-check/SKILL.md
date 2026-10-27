@@ -89,7 +89,8 @@ Do these in order, telling the SA what each step did.
 ## Slack self-DM
 
 The check posts **only** to the SA's self-DM (their conversation with themselves): never to a
-channel, another person or a group. It reads the self-DM, and, through the recap skill, only
+channel, another person or a group. A recap the SA runs by hand asks for missing links there
+too, and records the call as `held`, so step 3 handles its thread like the check's own. It reads the self-DM, and, through the recap skill, only
 the customer channels and chats the SA listed in the customer's `CLAUDE.md`.
 
 - **Find it once:** the Slack tools' descriptions state the signed-in user's ID ("Current logged

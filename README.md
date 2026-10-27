@@ -35,7 +35,7 @@ your own computer, where they can use:
 | Knowing a call is ready to recap (recap check) | Gong's **"call is ready" email**, read from your Gmail through **Glean** | Arrives about two hours before Glean's Gong search finds the call, and only goes to people who were on it |
 | Creating Jira epics and tickets | **Atlassian CLI (`acli`)** with your Jira **API token** | Writes to Jira without an OAuth app, which company admins often block |
 | Saving and reading Google Docs | A small **Drive helper** (`gdrive.py`) with your own Google **OAuth client** | Writes real Google Docs into the customer's folder, and can only touch the Docs it created |
-| Telling you a recap is ready, and asking you questions (recap check) | **Slack** (Claude connector): posts to your self-DM by sharing a small file, reads your replies | The connector's file-sharing tools are the ones that can post; it never posts anywhere but your self-DM |
+| Telling you a recap is ready, and asking you for missing links (recap check and recap) | **Slack** (Claude connector): posts to your self-DM by sharing a small file, reads your replies | The connector's file-sharing tools are the ones that can post; it never posts anywhere but your self-DM |
 | Running on a schedule (recap check) | A Claude Code **scheduled task** in the desktop app | Runs on your Mac with your sign-ins; nothing runs in the cloud |
 
 ## What each skill produces
@@ -47,8 +47,10 @@ You say something like *"Recap this call: \<Gong link\>"*, or paste a transcript
 1. **Reads the whole call.** From your paste, or the full Gong transcript through Glean, never
    Gong's summary. It works out who each speaker is.
 2. **Asks once for any missing link** (Drive folder, Salesforce, Vitalstatistix, session plan,
-   the customer's Slack channels) in one message, and waits for your answer before it saves
-   anything. Links you skip become `Not found`, and it lists them at the end.
+   the customer's Slack channels) in one message, in chat and in your Slack self-DM, and waits
+   for your answer before it saves anything. Answer in either place. If you don't answer, the
+   hourly recap check picks the call up from the Slack thread, as for its own calls. Links you
+   skip become `Not found`, and it lists them at the end.
 3. **Reads what came before.** The previous recap in the customer's Drive folder, so it can mark
    earlier action items as done or still open, and the customer's Slack channels since the last
    call, for follow-ups and promises. Channels are never named in the recap or tickets.
