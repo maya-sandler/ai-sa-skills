@@ -102,8 +102,8 @@ your working hours, and you don't prompt anything:
 4. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
    each recap records, so a call is never recapped twice.
 5. **Runs `customer-meeting-recap` unattended:** it never stops to ask. If the Drive folder or the
-   opportunity is unknown, it holds the call; if only other links are missing, it saves the recap
-   and holds the tickets.
+   opportunity is unknown, it holds the call. Other missing links (Salesforce, Vitalstatistix,
+   session plan) don't stop it: it writes `Not found` for them and creates the tickets anyway.
 6. **Posts to your Slack self-DM:** "recap ready" with the links, or a question you answer by
    replying in the post's thread. The next run reads your reply and finishes the call. A Claude
    notification on your Mac and phone pings you too, since Slack doesn't notify you about posts

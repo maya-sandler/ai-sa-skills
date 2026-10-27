@@ -192,8 +192,8 @@ it's from today and its title matches the meeting. The Gong call ID is the `id=`
 
   | Status | Post to Slack | Then |
   |---|---|---|
-  | `done` | "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file | `calls mark --status done`; audit lines for the recap Doc and each ticket |
-  | `held` | "*<Customer>* recap waiting: <its question> Reply in this thread.", listing the held tickets | `calls mark --status held --note <needs> --slack-ts <ts>` |
+  | `done` | "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file, and any `missing` links listed as "Not found: <links>" | `calls mark --status done`; audit lines for the recap Doc and each ticket |
+  | `held` | "*<Customer>* recap waiting: <its question> Reply in this thread." | `calls mark --status held --note <needs> --slack-ts <ts>` |
   | `error` | "*<Customer>* recap failed: <error>" | `calls mark --status error --note <error>`; the next run doesn't retry it |
 
   Send a Claude notification for every `held` and `error`, and for `done`.

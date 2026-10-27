@@ -63,13 +63,13 @@ to ask the SA:
   |---|---|
   | The opportunity's **Drive folder** (not in the prompt or `CLAUDE.md`) | Stop before writing anything. Return `held` with `needs: ["drive_folder"]` |
   | **Which opportunity** (several match, and they don't share one Drive folder) | Stop before writing anything. Return `held` with `needs: ["opportunity"]` and the candidates' names |
-  | Salesforce opportunity, Vitalstatistix or session plan link | Write `Not found` for it, save the recap, and **create no tickets**. Return `held` with `needs` naming the links, and the tickets you would create |
+  | Salesforce opportunity, Vitalstatistix or session plan link | Write `Not found` for it in the recap and the tickets, and carry on: save the recap and create the tickets. Return `done` with `missing` naming the links |
   | A **new opportunity** | Stop before writing anything. Return `held` with `needs: ["new_opportunity"]` |
 
 - **Never take a link from a Glean search,** not even as a suggestion. Only the prompt, the
   customer's `CLAUDE.md` and the opportunity's Drive folder count.
-- **Tickets:** when nothing is missing, create them as usual. When the run is held, create none,
-  and return what you would have created (title, owner, due date) so they can be created later.
+- **Tickets:** create them as usual, even when a link is `Not found`. Only a missing Drive folder
+  or opportunity holds the run, and a held run stops before writing anything, so it creates none.
 - **Don't post the recap in chat.** End with the result block below, and nothing after it.
 
 End every unattended run with exactly one block like this:
@@ -80,15 +80,15 @@ RECAP_RESULT
  "gong_call_id": "<id>",
  "recap": {"name": "<Doc name>", "link": "<webViewLink>"} | null,
  "tickets": [{"key": "KEY-123", "title": "Alex: …", "link": "<url>"}],
- "held_tickets": [{"title": "Alex: …", "owner": "Alex", "due": "YYYY-MM-DD"}],
- "needs": ["drive_folder" | "opportunity" | "new_opportunity" | "salesforce" | "vitalstatistix" | "session_plan"],
+ "needs": ["drive_folder" | "opportunity" | "new_opportunity"],
+ "missing": ["salesforce" | "vitalstatistix" | "session_plan"],
  "question": "<one sentence for the SA, if held>",
  "error": "<what failed, if error>"}
 ```
 
 When the check later passes in the SA's answer (its prompt starts with `UNATTENDED RUN, RESUME`),
-save the answer to `CLAUDE.md` as Step 1 describes. Then finish what was held: write the recap
-if none was saved, or create the held tickets and add their keys to the recap's Jira column.
+save the answer to `CLAUDE.md` as Step 1 describes. Then finish the run: write the recap if none
+was saved, and create any tickets not created yet, adding their keys to the recap's Jira column.
 
 ## Step 1: Customer context
 
