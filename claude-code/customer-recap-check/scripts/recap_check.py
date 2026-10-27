@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Helper for the customer-recap-check skill: settings, processed calls, the Active Customers
-Doc, the activity and audit logs, and Slack file uploads.
+Doc, the activity and audit logs, Slack file uploads, and Gong "call is ready" emails.
 
 Run it with the Drive helper's Python (it reuses gdrive.py from the customer-meeting-recap
 skill, installed next to this one):
@@ -15,9 +15,13 @@ Commands (every one prints JSON):
   customers read --folder ID [--all]    rows of the Active Customers Doc (Status Active only, unless --all)
 
   calls get --id CALL_ID                what happened to a Gong call before, or null
-  calls mark --id CALL_ID --status S [--customer C] [--date D] [--title T] [--note N] [--slack-ts TS]
-                                        record a call: done, held, skipped, error or dry-run
-  calls held                            calls waiting for an answer
+  calls mark --id CALL_ID --status S [--customer C] [--date D] [--title T] [--url U]
+             [--duration D] [--note N] [--slack-ts TS] [--missing LINKS|none] [--reminded YYYY-MM-DD]
+                                        record a call: waiting, done, held, skipped, error or dry-run
+  calls waiting                         calls whose Gong email came in, still to be recapped
+                                        (status waiting, or dry-run)
+  calls held                            calls waiting for an answer in Slack: held, or done with
+                                        links still missing
 
   log add --kind activity|audit --run RUN_ID --text TEXT [--dry-run]
                                         queue one log line (time is added for you)
@@ -25,15 +29,22 @@ Commands (every one prints JSON):
 
   slack-upload --url URL --file PATH    upload a file's bytes to a Slack upload URL
 
+  gong-email --file PATH                read a Gong "call is ready" email (Glean read_document
+                                        output, saved to a file) and print the call's ID, link,
+                                        title, account, date and duration. Never the Key points
+
 Nothing here reads or prints a token or secret.
 """
 import argparse
+import base64
 import datetime
+import html
 import json
 import os
 import re
 import sys
 import tempfile
+import urllib.parse
 import urllib.request
 
 HOME_CONFIG = os.path.expanduser("~/.config/sa-skills")
@@ -41,7 +52,7 @@ CONFIG = os.path.join(HOME_CONFIG, "config.json")
 CALLS = os.path.join(HOME_CONFIG, "processed-calls.json")
 LOG_DIR = os.path.join(HOME_CONFIG, "logs")
 PENDING = os.path.join(LOG_DIR, "pending.jsonl")
-STATUSES = ("done", "held", "skipped", "error", "dry-run")
+STATUSES = ("waiting", "done", "held", "skipped", "error", "dry-run")
 CUSTOMERS_DOC = "Active Customers"
 LOG_DOC = {"activity": "Recap Workflow – Activity Log – %s",
            "audit": "Recap Workflow – Audit Log – %s"}
@@ -50,15 +61,16 @@ SECRET_WORDS = ("token", "secret", "password", "key")
 
 CUSTOMERS_TEMPLATE = """# Active Customers
 
-The meeting-recap check only looks at customers on this list marked **Active**, and only on
-days you have a meeting with them. Add a row per customer you're working with; set Status to
+The meeting-recap check only recaps calls with customers on this list marked **Active**: it
+starts when Gong emails you that a call is ready, and matches the call to a row here. Add a row per customer you're working with; set Status to
 Paused to leave one out. No links or email domains here: links live in each customer's
 CLAUDE.md.
 
 - **Customer:** the name you use, the same as the customer's folder name.
 - **Folder:** the customer's folder inside your customer folders, e.g. acme/.
 - **Gong account:** the account name Gong shows for the customer's calls.
-- **Meeting title words:** words that appear in the titles of your meetings with them.
+- **Meeting title words:** words that appear in the titles of your meetings with them (a
+  backup, when Gong shows another account name).
 - **Status:** Active or Paused. The example row is ignored.
 
 | Customer | Folder | Gong account | Meeting title words | Status |
@@ -181,14 +193,23 @@ def cmd_calls(a):
     if a.action == "get":
         out(calls.get(a.id))
         return
+    if a.action == "waiting":
+        out({k: v for k, v in calls.items() if v.get("status") in ("waiting", "dry-run")})
+        return
     if a.action == "held":
-        out({k: v for k, v in calls.items() if v.get("status") == "held"})
+        out({k: v for k, v in calls.items() if v.get("status") == "held"
+             or (v.get("status") == "done" and v.get("missing"))})
         return
     if a.status not in STATUSES:
         fail("status must be one of %s" % ", ".join(STATUSES))
     entry = calls.get(a.id, {})
     entry.update({k: v for k, v in (("status", a.status), ("customer", a.customer), ("date", a.date),
-                                    ("title", a.title), ("note", a.note), ("slack_ts", a.slack_ts)) if v})
+                                    ("title", a.title), ("url", a.url), ("duration", a.duration),
+                                    ("note", a.note),
+                                    ("slack_ts", a.slack_ts), ("reminded", a.reminded)) if v})
+    if a.missing:
+        entry["missing"] = [] if a.missing == "none" else [m.strip() for m in a.missing.split(",") if m.strip()]
+    entry.setdefault("first_seen", datetime.datetime.now().isoformat(timespec="seconds"))
     entry["updated"] = datetime.datetime.now().isoformat(timespec="seconds")
     calls[a.id] = entry
     write_private(CALLS, calls)
@@ -259,6 +280,73 @@ def cmd_slack_upload(a):
         fail("upload failed: HTTP %s (a 401 means the URL expired or was changed; get a new one)" % e.code)
 
 
+# --- Gong "call is ready" email --------------------------------------------
+
+READY_SUFFIX = ": Call recording and analysis is ready"
+
+
+def gmail_parts(raw):
+    """Decoded bodies of every part of the raw Gmail API JSON in a read_document result.
+
+    The JSON sits inside a quoted snippet, so its quotes may be escaped once or twice. The
+    base64url alphabet has no quote or backslash, so a pattern that skips those finds every
+    "data" field however deeply it's escaped."""
+    parts = []
+    for data in re.findall(r'"data\\*"\s*:\s*\\*"([A-Za-z0-9_\-]+=*)', raw):
+        try:
+            parts.append(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("utf-8", "replace"))
+        except ValueError:
+            continue
+    return parts
+
+
+def html_text(fragment):
+    text = re.sub(r"<(style|script)\b.*?</\1>", " ", fragment, flags=re.S | re.I)
+    text = html.unescape(re.sub(r"<[^>]+>", " ", text))
+    return re.sub(r"\s+", " ", text.replace("\xa0", " ")).strip()
+
+
+def cmd_gong_email(a):
+    with open(a.file, encoding="utf-8", errors="replace") as f:
+        raw = f.read()
+    body = next((p for p in gmail_parts(raw) if "gong.io/call?id=" in p), None)
+    if body is None:
+        fail("no Gong call link found in that email (is it a Gong 'call is ready' email?)")
+
+    link = html.unescape(re.search(r'https://[A-Za-z0-9.-]+\.gong\.io/call\?[^"\'\s<>]+', body).group(0))
+    u = urllib.parse.urlsplit(link)
+    call_id = urllib.parse.parse_qs(u.query).get("id", [""])[0]
+    if not call_id.isdigit():
+        fail("the Gong link in that email has no call ID")
+
+    m = re.search(r'class="entity-title"[^>]*>(.*?)</span>', body, re.S)
+    title = html_text(m.group(1)) if m else ""
+    if not title:
+        m = re.search(r'^\s*title: "(.*)"\s*$', raw, re.M)
+        title = (m.group(1) if m else "").replace(READY_SUFFIX, "").strip()
+
+    # The account is the link to Gong's account page; date and duration follow it, set off by bullets.
+    m = re.search(r'<a [^>]*href="[^"]*\.gong\.io/account\?[^"]*"[^>]*>(.*?)</a>', body, re.S)
+    account = html_text(m.group(1)) if m else ""
+    rest = html_text(body[m.end():] if m else body)
+    m = re.match(r"\W*([A-Z][a-z]{2} \d{1,2}, \d{4})\W*•?\s*(.+?)\s*(?:LaunchDarkly:|Customer:|Go to call|$)", rest)
+    date = duration = ""
+    if m:
+        try:
+            date = datetime.datetime.strptime(m.group(1), "%b %d, %Y").date().isoformat()
+        except ValueError:
+            date = m.group(1)
+        duration = m.group(2).strip(" •")
+
+    m = re.search(r'internalDate\\*"\s*:\s*\\*"(\d+)', raw)
+    received = (datetime.datetime.fromtimestamp(int(m.group(1)) / 1000).isoformat(timespec="seconds")
+                if m else None)
+    out({"gong_call_id": call_id,
+         "call_url": "%s://%s%s?id=%s" % (u.scheme, u.netloc, u.path, call_id),
+         "title": title, "account": account, "date": date, "duration": duration,
+         "email_received": received})
+
+
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -274,9 +362,10 @@ def main():
     cu.add_argument("--all", action="store_true")
 
     ca = sub.add_parser("calls")
-    ca.add_argument("action", choices=["get", "mark", "held"])
+    ca.add_argument("action", choices=["get", "mark", "waiting", "held"])
     ca.add_argument("--id")
-    for opt in ("--status", "--customer", "--date", "--title", "--note", "--slack-ts"):
+    for opt in ("--status", "--customer", "--date", "--title", "--url", "--duration", "--note", "--slack-ts",
+                "--missing", "--reminded"):
         ca.add_argument(opt)
 
     lg = sub.add_parser("log")
@@ -291,6 +380,9 @@ def main():
     su.add_argument("--url", required=True)
     su.add_argument("--file", required=True)
 
+    ge = sub.add_parser("gong-email")
+    ge.add_argument("--file", required=True)
+
     a = p.parse_args()
     if a.cmd == "calls" and a.action in ("get", "mark") and not a.id:
         fail("calls %s needs --id" % a.action)
@@ -299,7 +391,7 @@ def main():
     if a.cmd == "log" and a.action == "flush" and not a.folder:
         fail("log flush needs --folder")
     {"config": cmd_config, "customers": cmd_customers, "calls": cmd_calls,
-     "log": cmd_log, "slack-upload": cmd_slack_upload}[a.cmd](a)
+     "log": cmd_log, "slack-upload": cmd_slack_upload, "gong-email": cmd_gong_email}[a.cmd](a)
 
 
 if __name__ == "__main__":

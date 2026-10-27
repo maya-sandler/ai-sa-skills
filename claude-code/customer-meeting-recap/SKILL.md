@@ -52,50 +52,51 @@ token).
 ## Unattended mode (automatic runs)
 
 The `customer-recap-check` skill runs this skill on its own, with no one watching. Its prompt
-starts with `UNATTENDED RUN` and gives the Gong link, the customer's folder, the meeting title
-and date. In an unattended run, everything below applies, and it overrides any step that says
-to ask the SA:
+starts with `UNATTENDED RUN` and gives the Gong link and call ID, the transcript file it already
+made (Step 2), the customer's folder, the meeting title and date. In an unattended run,
+everything below applies, and it overrides any step that says to ask the SA:
 
-- **Never ask and never wait.** Where a step says to ask, do what this table says instead, and
-  carry on with the rest.
+- **Never ask and never wait.** The check asks the SA in Slack for you. Where Step 1 says to ask,
+  do what this table says instead.
 
-  | Missing or unclear | What to do |
-  |---|---|
-  | The opportunity's **Drive folder** (not in the prompt or `CLAUDE.md`) | Stop before writing anything. Return `held` with `needs: ["drive_folder"]` |
-  | **Which opportunity** (several match, and they don't share one Drive folder) | Stop before writing anything. Return `held` with `needs: ["opportunity"]` and the candidates' names |
-  | Salesforce opportunity, Vitalstatistix or session plan link | Write `Not found` for it in the recap and the tickets, and carry on: save the recap and create the tickets. Return `done` with `missing` naming the links |
-  | A **new opportunity** | Stop before writing anything. Return `held` with `needs: ["new_opportunity"]` |
+  | Prompt starts with | Links still missing after Step 1.3 | What to do |
+  |---|---|---|
+  | `UNATTENDED RUN` | Any (Drive folder, Salesforce, Vitalstatistix, session plan, Slack channels), or which opportunity / a new opportunity | Stop before writing anything. Return `held` with every one in `needs`, and one `question` asking for all of them |
+  | `UNATTENDED RUN, RESUME` (gives the SA's answer) | Whatever the answer didn't give | Save the answer to `CLAUDE.md` (Step 1.5). Still no Drive folder, or still unclear which opportunity: return `held` again. Otherwise write `Not found` for the rest, and finish. Return `done` with `missing` naming them |
+  | `UNATTENDED RUN, NO ANSWER` | Salesforce, Vitalstatistix, session plan, Slack channels | Write `Not found` for them, and finish. Return `done` with `missing` naming them |
 
-- **Never take a link from a Glean search,** not even as a suggestion. Only the prompt, the
-  customer's `CLAUDE.md` and the opportunity's Drive folder count.
-- **Tickets:** create them as usual, even when a link is `Not found`. Only a missing Drive folder
-  or opportunity holds the run, and a held run stops before writing anything, so it creates none.
+- **Never take a link from a Glean or Slack search,** not even as a suggestion. Only the prompt,
+  the customer's `CLAUDE.md` and the opportunity's Drive folder count.
+- **Tickets:** create them as usual, even when a link is `Not found`. A held run stops before
+  writing anything, so it creates none.
+- **Transcript:** use the transcript file the prompt gives. If there's none, make it as Step 2
+  says; if the call has no transcript yet, return `waiting` before writing anything.
 - **Don't post the recap in chat.** End with the result block below, and nothing after it.
 
 End every unattended run with exactly one block like this:
 
 ```text
 RECAP_RESULT
-{"status": "done" | "held" | "error",
+{"status": "done" | "held" | "waiting" | "error",
  "gong_call_id": "<id>",
  "recap": {"name": "<Doc name>", "link": "<webViewLink>"} | null,
  "tickets": [{"key": "KEY-123", "title": "Alex: …", "link": "<url>"}],
- "needs": ["drive_folder" | "opportunity" | "new_opportunity"],
- "missing": ["salesforce" | "vitalstatistix" | "session_plan"],
- "question": "<one sentence for the SA, if held>",
+ "needs": ["drive_folder" | "opportunity" | "new_opportunity" | "salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],
+ "missing": ["salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],
+ "question": "<one message for the SA listing every missing link, if held>",
  "error": "<what failed, if error>"}
 ```
 
-When the check later passes in the SA's answer (its prompt starts with `UNATTENDED RUN, RESUME`),
-save the answer to `CLAUDE.md` as Step 1 describes. Then finish the run: write the recap if none
-was saved, and create any tickets not created yet, adding their keys to the recap's Jira column.
+A `RESUME` or `NO ANSWER` run finishes the call: write the recap if none was saved, and create
+any tickets not created yet, adding their keys to the recap's Jira column.
 
 ## Step 1: Customer context
 
 The session usually runs in the customer folder (`{{CUSTOMERS_DIR}}/<customer>/`). Its
 `CLAUDE.md` has the customer name, epic key, team, and an **Opportunities** list: one entry per
 Salesforce opportunity, each with its own links (Drive folder, Vitalstatistix, session plan).
-If you aren't in a customer folder, find the right one under `{{CUSTOMERS_DIR}}/`.
+Its **Slack** section lists the customer's Slack channels and chats. If you aren't in a customer
+folder, find the right one under `{{CUSTOMERS_DIR}}/`.
 
 **If there's no folder for this customer, create it now:** make
 `{{CUSTOMERS_DIR}}/<customer-slug>/` (lowercase, hyphens, e.g. `acme-corp`) containing just a
@@ -133,8 +134,8 @@ opportunity link is what makes an opportunity unique.
 **2. New opportunity: add an entry and ask about every link.** Add an entry under
 Opportunities with the name (ask the SA to confirm it, suggesting `<Offering> opportunity (<n>)`)
 and the Salesforce link, if you have it. Then ask **one** question covering every link the
-prompt didn't give: Salesforce opportunity, Drive folder, Vitalstatistix, session plan. For
-each one, offer to reuse an existing opportunity's link (show it), or to have the SA give a new
+prompt didn't give: Salesforce opportunity, Drive folder, Vitalstatistix, session plan, plus
+the customer's Slack channels if `CLAUDE.md` has none (see step 4). For each link, offer to reuse an existing opportunity's link (show it), or to have the SA give a new
 one. For example:
 
 > New opportunity: **RSA100 opportunity**. For each link, reuse one or send a new one:
@@ -153,14 +154,37 @@ entry doesn't have, stop at the first source that has it:
 3. Docs in that Drive folder. Read them with Glean `search` with `container_filter` set to the
    folder URL; the SA handoff doc's "Sources" usually links the opportunity.
 
-**4. Still missing? Ask once.** Ask the SA for **all** the missing links in **one** message,
-naming the opportunity. Do it at the start, while you work on the transcript: don't create any
-tickets until you have the answer. You may suggest candidates you found in Glean (see
-`references/sources.md`), but present them as a question ("Is this the right opportunity?").
-Use one only after the SA confirms it. If the SA says to skip a link, write `Not found`.
+**4. Still missing? Ask once, then wait.** Before you create the recap Doc or any ticket, ask
+the SA for **every** missing link in **one** message, naming the opportunity:
+- Drive folder, Salesforce opportunity, Vitalstatistix and session plan, if this opportunity's
+  entry doesn't have them;
+- the customer's **Slack channels and chats**, if `CLAUDE.md` has no Slack section: the shared
+  customer channel, an internal account channel, group DMs. Ask for each one's link (in Slack:
+  right-click it → Copy link).
+
+For example:
+
+> Missing links for **Acme, RSA50 opportunity (1)**. Send any you have, or say skip:
+> - **Salesforce opportunity**
+> - **Session plan**
+> - **Slack:** the shared Acme channel, an internal Acme channel, any group DMs (or "none")
+
+Read the transcript while you wait, but don't save anything to Drive or create tickets until the
+SA answers. You may suggest Salesforce or Vitalstatistix candidates you found in Glean (see
+`references/sources.md`), but present them as a question ("Is this the right opportunity?"),
+and use one only after the SA confirms it.
+
+**Never work out Slack channels yourself:** don't search Slack or Glean for them, and don't
+guess from channel names. Only the SA's answer counts.
+
+If the SA answers without some links, or says skip, write `Not found` for them and carry on. At
+the end, list the links still needed. If the SA says a link doesn't exist (e.g. "no shared
+channel"), write `none` for it in `CLAUDE.md`, so later runs don't ask again.
 
 **5. Save what you learned.** Write each link from the prompt, the folder or the SA's answer
-into **this opportunity's** entry in `CLAUDE.md`. The next run then needs no questions.
+into **this opportunity's** entry in `CLAUDE.md`, and Slack channels into its **Slack** section.
+The next run then needs no questions. Slack channels are only for reading (Step 3): never write
+their names or links into a Doc or ticket.
 
 The epic and team are per customer, not per opportunity. Take them from `CLAUDE.md`, or find
 the epic in Step 5.
@@ -168,14 +192,39 @@ the epic in Step 5.
 Also ask the SA if you can't tell which customer this is, or there's no source for the
 meeting content.
 
-## Step 2: Get the meeting content
+## Step 2: Get the full transcript
+
+Write the recap **only from the call's full transcript** (or the SA's own notes). Never use
+Gong's "call is ready" email or its Key points, Gong's call summary, or Glean search snippets as
+the source: they leave things out.
 
 Use the first one that works:
 
 1. A transcript or notes the SA pasted, or a file they named.
-2. A Gong link (`app.gong.io/call?id=...`). Use Glean `read_document` with the URL, or Glean
-   `search` with `app: gong` for the customer name or call title.
-3. If none of these works, ask the SA to paste the transcript.
+2. A Gong link (`https://<host>.app.gong.io/call?id=<id>`). Drop everything after the `id`
+   (Gong's tracking), then Glean `read_document` on that link. If you don't have the link, find
+   the call with Glean `search` (`app: gong`, the customer name or call title), and read it.
+   The result is usually saved to a file because it's large; if it came back inline, write it to
+   a scratchpad file. Then turn it into a readable transcript:
+
+   ```bash
+   python3 {{SKILLS_DIR}}/customer-meeting-recap/scripts/gong_transcript.py --file <saved result> --out <scratchpad>/transcript.txt
+   ```
+
+   It writes one `[HH:MM:SS] speaker: text` line per utterance, timed from the start of the call,
+   and prints the number of utterances, the length in minutes and each speaker. Read the whole
+   file. Gong's own summary, also in the result, is left out on purpose.
+3. If none of these works, ask the SA to paste the transcript. If the call isn't in Glean yet,
+   say so: Gong takes a while after the call.
+
+**Speakers.** LaunchDarkly people show as their email: use their names from `CLAUDE.md`'s Team
+list, or Glean `employee_search`. Some external speakers show only as `Speaker <6 hex
+characters>`. Work out who they are from the transcript (introductions, people addressing each
+other) and from Glean: `search` with `app: gong` for the call title shows snippets like
+`Name: <words>` (find those words in the transcript to see whose hash it is) and the call's
+external participants. Then rerun the helper with `--speaker '<hash>=<Name>'` for each one
+(quote it). Mark a name you're unsure of, e.g. `--speaker 'A1B2C3=Sam (unsure)'`, and keep the
+mark in the recap's Attendees line. Leave one you can't tell as `Speaker <hash>`.
 
 Note the meeting date, title and attendees (theirs and ours). If the transcript was pasted
 (rather than in Gong), save it to Drive as `<Customer> – Transcript – <YYYY-MM-DD> – <short title>`
@@ -185,8 +234,16 @@ so the prep skill can use it later.
 
 - **Earlier recaps:** run `list --folder <ID> --contains "Meeting Recap"`, then `read` the newest one.
 - **Session plan and other docs:** use Glean `search` with `container_filter` set to the Drive folder URL.
+- **The customer's Slack channels,** if `CLAUDE.md` lists them: `slack_read_channel` on each
+  one's ID (the part of its link after `/archives/`), with `oldest` set to the previous call's
+  date as a Unix timestamp (`date -j -f %Y-%m-%d <date> +%s`; the last 14 days if there's no
+  previous call). Read threads with `slack_read_thread` where the replies matter. Look for
+  follow-ups, questions, items someone promised, and decisions. Read no other channel.
 
-Use them to tell what's new and to mark earlier action items as done or still open.
+Use them to tell what's new and to mark earlier action items as done or still open. Use what
+the Slack channels add in the recap and its action items, in your own words. **Never name or
+link a Slack channel** in the recap or a ticket; write "on Slack" if you need to say where
+something came from.
 
 ## Step 4: Write the recap
 
@@ -217,8 +274,9 @@ Topic-by-topic bullets, including decisions made.
 ## Action items – <Customer>
 | # | Task | Owner | Due |
 
-## Open questions
-Their questions we still need to answer, plus questions we have for them.
+## Next steps
+What happens next that isn't already an action item: their questions we still need to answer,
+questions we have for them, decisions still to make. Nothing that's in either Action items table.
 
 ## Previous action items
 Items from the last recap, each marked ✅ done / ⏳ still open.
@@ -234,13 +292,15 @@ Items from the last recap, each marked ✅ done / ⏳ still open.
 ```
 
 Always fill in the **Customer links** section with this opportunity's links from Step 1. Write
-`Not found` only for a link the SA chose to skip. The next recap and prep brief for this
+`Not found` only for a link the SA skipped or didn't give. Slack channels never go here. The next recap and prep brief for this
 opportunity read their links from it; the Opportunity line tells them which opportunity a recap
 belongs to when several share a Drive folder.
 
 Rules:
 - Turn relative dates ("next Tuesday") into absolute dates, using the meeting date.
 - If the call doesn't give a due date, use `TBD`. Don't make one up.
+- **Next steps** never repeat an action item. If something has an owner and a task, it goes in
+  an Action items table, not here.
 - **LaunchDarkly team** items are anything someone at LaunchDarkly committed to: the SA, the AE,
   a specialist, PS, or "we" in general. The **Owner** is the person who said they'd do it, by
   first name. If it was "we" or unclear, the owner is the SA. Every LaunchDarkly team item gets a
@@ -332,7 +392,7 @@ Description template (keep these exact headings):
 - Source meeting: <Gong/Zoom link> (<YYYY-MM-DD>)
 ```
 
-If a link is missing, write `Not found` instead of removing the line.
+If a link is missing, write `Not found` instead of removing the line. Never add a Slack channel.
 
 ## Step 7: Save to Drive and report
 
@@ -347,6 +407,8 @@ If a link is missing, write `Not found` instead of removing the line.
 3. In chat, link the recap Doc first (its `webViewLink`), then post the full recap and a ticket list:
    `- [KEY-123](https://{{JIRA_SITE}}/browse/KEY-123) Alex: …`
    Also say whether the epic was found or newly created.
+4. If any link is still `Not found`, end by listing the links still needed, so the SA can send
+   them for next time.
 
 ## Keep CLAUDE.md current
 
@@ -358,6 +420,7 @@ short. It's an address book, not notes; meeting content belongs in the Drive rec
 |---|---|
 | Customer-wide | The epic key, if it's new |
 | Opportunities → this opportunity | Its Salesforce opportunity, Drive folder, Vitalstatistix and session plan or handoff link (only from the sources Step 1 allows). A new opportunity gets a new entry; never overwrite another opportunity's links |
+| Slack | The customer's channels and chats, only from the SA's answer: what each is, its link and ID, or `none` |
 | Team | New attendees from this call, both sides, as `Name (role)`; fix a role if the call made it clearer. Keep the SA marked SA |
 | Calls | This call's recording link and date, as the latest call |
 | Tech stack | Facts confirmed on the call (SDKs, languages, warehouse, infra, integrations) |

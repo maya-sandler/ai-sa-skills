@@ -9,9 +9,9 @@ for the next session.
   LaunchDarkly team committed to.
 - **`customer-session-prep`**: before a call, writes a one-page prep brief (a Google Doc in the
   same folder) so you know in two minutes what to deliver, what's still open, and what to ask.
-- **`customer-recap-check`**: runs the recap for you. Every hour it finds today's finished calls
-  with your active customers, recaps the new ones, and tells you in your Slack self-DM, asking
-  there when something is missing.
+- **`customer-recap-check`**: runs the recap for you. Every hour it looks for Gong's "call is
+  ready" emails for calls with your active customers, recaps the new ones, and tells you in your
+  Slack self-DM, asking there when links are missing.
 
 ## The problem these solve
 
@@ -32,9 +32,9 @@ your own computer, where they can use:
 | For | They use | Why |
 |---|---|---|
 | Reading call transcripts, Salesforce, Drive, Jira and Slack | **Glean** (Claude connector) | Already searches everything you have access to |
+| Knowing a call is ready to recap (recap check) | Gong's **"call is ready" email**, read from your Gmail through **Glean** | Arrives about two hours before Glean's Gong search finds the call, and only goes to people who were on it |
 | Creating Jira epics and tickets | **Atlassian CLI (`acli`)** with your Jira **API token** | Writes to Jira without an OAuth app, which company admins often block |
 | Saving and reading Google Docs | A small **Drive helper** (`gdrive.py`) with your own Google **OAuth client** | Writes real Google Docs into the customer's folder, and can only touch the Docs it created |
-| Finding today's customer meetings (recap check) | **Google Calendar** (Claude connector) | Knows when each meeting ended and who attended |
 | Telling you a recap is ready, and asking you questions (recap check) | **Slack** (Claude connector): posts to your self-DM by sharing a small file, reads your replies | The connector's file-sharing tools are the ones that can post; it never posts anywhere but your self-DM |
 | Running on a schedule (recap check) | A Claude Code **scheduled task** in the desktop app | Runs on your Mac with your sign-ins; nothing runs in the cloud |
 
@@ -44,20 +44,27 @@ your own computer, where they can use:
 
 You say something like *"Recap this call: \<Gong link\>"*, or paste a transcript.
 
-1. **Reads the call.** From your paste, or the Gong recording through Glean.
-2. **Reads what came before.** The previous recap in the customer's Drive folder, so it can mark
-   earlier action items as done or still open.
-3. **Writes the recap** and saves it as `<Customer> – Meeting Recap – <date>` in the Drive folder:
+1. **Reads the whole call.** From your paste, or the full Gong transcript through Glean, never
+   Gong's summary. It works out who each speaker is.
+2. **Asks once for any missing link** (Drive folder, Salesforce, Vitalstatistix, session plan,
+   the customer's Slack channels) in one message, and waits for your answer before it saves
+   anything. Links you skip become `Not found`, and it lists them at the end.
+3. **Reads what came before.** The previous recap in the customer's Drive folder, so it can mark
+   earlier action items as done or still open, and the customer's Slack channels since the last
+   call, for follow-ups and promises. Channels are never named in the recap or tickets.
+4. **Writes the recap** and saves it as `<Customer> – Meeting Recap – <date>` in the Drive folder:
    - Summary and what was discussed, including decisions
    - Artifacts shared, plus relevant LaunchDarkly docs (only links it has confirmed exist)
    - Scheduled meetings, with dates
    - **Action items – LaunchDarkly team**, with owner, due date and Jira ticket
    - **Action items – \<Customer\>**, with owner and due date
-   - Open questions (theirs and ours), and the status of the previous recap's action items
+   - **Next steps**: open questions (theirs and ours) and decisions still to make, never
+     repeating an action item
+   - The status of the previous recap's action items
    - **Customer links**: opportunity, Salesforce, Drive folder, Vitalstatistix, Jira epic, team
-4. **Finds or creates the customer's Jira epic** (named after the customer, in Title Case) in your
+5. **Finds or creates the customer's Jira epic** (named after the customer, in Title Case) in your
    own Jira project.
-5. **Creates one ticket per LaunchDarkly team action item**, skipping any that already exist:
+6. **Creates one ticket per LaunchDarkly team action item**, skipping any that already exist:
    - **Title:** `<Owner>: <short task>`, e.g. `Alex: Confirm Big Segments Need Persistent Store`.
      No customer name, since the epic already says that.
    - **Assignee:** you, if it's your task. Other people's tasks are left unassigned, so the name in
@@ -95,15 +102,19 @@ your working hours, and you don't prompt anything:
 1. **Reads your Active Customers list,** a Google Doc in your own Drive folder that you edit from
    any device: one row per customer you're working with (name, folder, Gong account, words in
    your meeting titles, Active or Paused). No links or email domains go in it.
-2. **Finds today's finished meetings** with those customers in Google Calendar, where you were an
-   attendee.
-3. **Waits for each call's Gong recording** to appear in Glean, matched by the customer's Gong
-   account.
-4. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
+2. **Finds Gong's "call is ready" emails** since the last run (Gmail, through Glean). Gong sends
+   one to each participant when a call's recording is ready, so it knows you were on the call.
+   It matches each email to a customer by the Gong account (or the meeting title words) and
+   reads only the call link, account, date and duration from it.
+3. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
    each recap records, so a call is never recapped twice.
-5. **Runs `customer-meeting-recap` unattended:** it never stops to ask. If the Drive folder or the
-   opportunity is unknown, it holds the call. Other missing links (Salesforce, Vitalstatistix,
-   session plan) don't stop it: it writes `Not found` for them and creates the tickets anyway.
+4. **Waits for the full transcript** in Glean, and writes the recap only from it.
+5. **Runs `customer-meeting-recap` unattended:** it never stops to wait. If links are missing, it
+   asks you once in Slack for all of them and holds the call. No reply by the next run: it
+   recaps with `Not found` for those links, creates the tickets, and lists the links still
+   needed in the thread; a later reply is saved for the next recap. Only a missing Drive folder
+   keeps the call held, since there's nowhere to save the recap, with a reminder at most once a
+   day.
 6. **Posts to your Slack self-DM:** "recap ready" with the links, or a question you answer by
    replying in the post's thread. The next run reads your reply and finishes the call. A Claude
    notification on your Mac and phone pings you too, since Slack doesn't notify you about posts
@@ -131,6 +142,9 @@ book, not notes: the customer's Jira epic, team, latest call and tech stack, and
 - **They never guess links.** Salesforce, Drive and Vitalstatistix links come only from your
   prompt, the opportunity's own Drive folder, or your answer. If one is missing, the skill asks
   you for all the missing ones in one message.
+- **Slack channels come only from you.** The recap asks for the customer's channels and chats
+  (shared channel, internal account channel, group DMs) and saves them in a **Slack** section.
+  It never searches for them, and never names them in a Doc or ticket.
 - **New opportunity?** Give the skill the new Salesforce link (or say it's a new opportunity). It
   adds a new entry and asks, link by link, whether to reuse an existing opportunity's link or use
   a new one.
@@ -309,7 +323,8 @@ any Claude Code session, say:
 | "What did the recap check do today?" | Reads this month's activity and audit logs |
 
 To answer a question it asks in Slack, reply in that post's thread, e.g. with the Drive folder
-link. The desktop app must be open and your Mac awake for a check to run; a missed check runs at
+link. It needs Gong's "call is ready" emails turned on (they are by default) and Glean able to
+read your Gmail. The desktop app must be open and your Mac awake for a check to run; a missed check runs at
 the next one.
 
 ## What's in this repo
@@ -318,9 +333,9 @@ the next one.
 |---|---|
 | `install.sh` | Asks the questions, then installs the skills and the Drive helper's libraries |
 | `ACCESS-AND-SETUP.md` | Full setup: credentials step by step, what works and what's blocked, troubleshooting |
-| `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `references/` |
+| `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `scripts/gong_transcript.py` (Gong transcript → readable file), `references/` |
 | `claude-code/customer-session-prep/` | The prep skill: `SKILL.md` |
-| `claude-code/customer-recap-check/` | The automatic recap check: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, logs, Slack uploads) |
+| `claude-code/customer-recap-check/` | The automatic recap check: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, logs, Slack uploads, Gong emails) |
 
 ## Rules for this repo
 

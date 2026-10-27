@@ -78,8 +78,9 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
    one or two. If there aren't any, look for recap or notes docs in the folder through Glean.
    - **Latest call, if it has no recap:** list the customer's Gong calls (Glean `search` for
      `<customer>` with `app: gong` and `sort_by_recency`). If the newest call is newer than the
-     newest recap, read its whole transcript with `read_document`. Use it for the latest status,
-     open questions and action items. If the SA names a call, use that one.
+     newest recap, read its whole transcript with `read_document` and `gong_transcript.py`, as
+     the recap skill's Step 2 says. Use it for the latest status, open questions and action
+     items. If the SA names a call, use that one.
 2. **Session plan.** Use Glean `search` with `container_filter` set to the Drive folder URL.
    Work out which session comes next, what it covers, and its success criteria.
 3. **My tasks (acli):**
@@ -90,16 +91,18 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
    `acli jira workitem view <KEY> --fields summary,status,duedate,description --json`.
    - **Done** tickets → *show or explain* in this session. Use the description for the details.
    - **Open** tickets due on or before the session → warn the SA.
-4. **Open questions.** Take the "Open questions" from the recaps, plus anything still
-   unanswered in the session plan. For each one, give a draft answer or a confirmed
-   `launchdarkly.com/docs/...` link (LaunchDarkly MCP `search-docs`).
+4. **Open questions.** Take the open questions from the recaps' "Next steps" section (older
+   recaps call it "Open questions"), plus anything still unanswered in the session plan. For
+   each one, give a draft answer or a confirmed `launchdarkly.com/docs/...` link (LaunchDarkly
+   MCP `search-docs`).
 5. **Support tickets.** Use Glean to find tickets the customer opened (Zendesk, plus Jira
    tickets that mention them). List the open ones and anything from the last 30 days, with
    status and link.
 6. **Tech stack.** Use `CLAUDE.md`, earlier recaps, the handoff/discovery docs and Glean:
    languages, LaunchDarkly SDKs (server-side and client-side), Relay Proxy, cloud/infra, data
    warehouse, CI/CD, observability, integrations.
-7. **Action items.** List the open items from the last recap or call, to follow up on. Split them
+7. **Action items.** List the open items from the last recap's Action items tables (or the
+   call), to follow up on. Its "Next steps" may hold other things to follow up on. Split them
    by owner: the customer's items, and LD people's items (AE, CSM, SE).
 8. **Engagement history (existing customer only).** Work out what was delivered before. Don't
    rely on what someone says was delivered.

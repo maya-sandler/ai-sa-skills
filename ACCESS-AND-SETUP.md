@@ -39,10 +39,11 @@ either one, and both are used only through a command-line tool.
 | Atlassian Rovo MCP connector | ❌ Blocked | Couldn't be connected. Probably the same admin policy |
 | Google Drive connector for Claude | ❌ Not enabled | Not available to Claude at the time of writing. Ask IT if that has changed |
 | Gong / Salesforce connectors | ➖ Not available | Use Glean instead |
-| **Google Calendar** connector | ✅ Works | Used by the recap check to find today's finished customer meetings |
+| **Gmail through Glean** | ✅ Works | Glean reaches your Gmail live. The recap check uses it only to find Gong's "call recording and analysis is ready" emails, about two hours before Glean's Gong search finds the call |
 | **Slack** connector, posting by file share | ✅ Works | The recap check posts to your self-DM by sharing a small file with a message, and reads your replies. Only the file-upload tools can post |
+| **Slack** connector, reading a customer's channels | ✅ Works | The recap reads only the channels and chats you listed for that customer, for context since the last call |
 | Slack connector, plain send-message tool | ❌ Not offered | Not among the connector's tools at the time of writing; ask the admin who manages Claude connectors. The recap check would switch to it |
-| Gong webhooks | ➖ Not needed | Need a Gong admin and a public endpoint. The recap check polls instead |
+| Gong webhooks | ➖ Not needed | Need a Gong admin and a public endpoint. The recap check reads Gong's emails instead |
 | API keys in `.env` for **Claude Desktop chat** | ❌ Won't work | Desktop chats run in a cloud sandbox and can't see your Mac's files or CLIs. That's why these skills run in Claude Code |
 
 ## Setup (about 25 minutes)
@@ -185,8 +186,12 @@ The installer already put the skills in place; Claude Code picks them up automat
 
 **C1. Add a customer.** Easiest: just run a skill with the customer's links in your prompt
 (Salesforce opportunity and/or Drive folder). If there's no `<customer folders>/<customer>/`
-folder yet (the location you chose in Part 0), the skill creates it with a `CLAUDE.md`. It asks for any link that isn't in your
-prompt or the Drive folder, and saves your answers there.
+folder yet (the location you chose in Part 0), the skill creates it with a `CLAUDE.md`. Before
+saving the recap, it asks once, in one message, for every link that isn't in your prompt or the
+Drive folder, and saves your answers there. That includes the customer's **Slack channels and
+chats** (shared channel, internal account channel, group DMs): send each one's link (right-click
+→ Copy link), or say "none". The skills never search for channels themselves, read only the
+ones you list, and never name them in a Doc or ticket.
 
 `CLAUDE.md` keeps one entry per **opportunity**, named like `RSA50 opportunity (1)`,
 `RSA100 opportunity`, `RSA50 opportunity (2)`, each with its own Salesforce, Drive folder,
@@ -213,16 +218,21 @@ to it", ask the folder's owner to make you an editor.
 ### Part D: Automatic recaps (optional, about 10 minutes)
 
 `customer-recap-check` recaps your customer calls on a schedule, with no prompt. It needs no new
-credential: it uses the Jira and Drive sign-ins from Parts A and B, plus three Claude connectors.
+credential: it uses the Jira and Drive sign-ins from Parts A and B, plus two Claude connectors.
+
+It starts from Gong's **"call recording and analysis is ready"** email, which Gong sends to each
+participant about two hours before Glean's Gong search finds the call. Keep those emails on in
+Gong (they are by default), and don't filter them out of your inbox. The check reads only those
+emails, and only the call link, account, date and duration from each. The recap is always
+written from the call's full transcript, so a call waits until Glean has it.
 
 **D1. Check the connectors.** In claude.ai, **Settings → Connectors**, make sure these are
 connected and enabled for Claude Code:
 
 | Connector | Tools the check uses |
 |---|---|
-| **Glean** | Search (to find each meeting's Gong call) |
-| **Google Calendar** | List events (to find today's finished meetings) |
-| **Slack** | Read channel and read thread (your self-DM only), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts |
+| **Glean** | Search and read document: Gong's emails in your Gmail, the call's transcript, the customer's Drive folder |
+| **Slack** | Read channel and read thread (your self-DM, and the customer channels you listed), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts to your self-DM |
 
 **D2. Have a Drive folder of your own** for the check's files: the Active Customers list and the
 monthly activity and audit logs. You need edit access to it. Give it to `install.sh` (question
@@ -237,11 +247,17 @@ monthly activity and audit logs. You need edit access to it. Give it to `install
 4. Starts in **dry-run mode**: for a while it only reports what it would do.
 
 **D4. Approve its tools once.** On the first runs, approve the tools it uses when asked
-(Calendar, Glean, Slack, and Bash for the helper scripts and `acli`), so later runs don't stop
+(Glean, Slack, and Bash for the helper scripts and `acli`), so later runs don't stop
 for permission. Turn on Claude notifications on your Mac and phone, so you're pinged when a
 recap is ready or a question waits for you.
 
 **D5. Go live** when the dry runs look right: say **"switch the recap check to live"**.
+
+**When links are missing,** it asks you once in your self-DM for all of them; reply in the
+thread. No reply by the next run: it recaps with `Not found` for those links, creates the
+tickets, and lists the links still needed in the thread, where a later reply is saved for next
+time. A missing Drive folder is the exception: with nowhere to save the recap, the call waits,
+with a reminder at most once a day.
 
 The desktop app must be open and your Mac awake at check time; a missed check runs at the next
 one. Everything the check produces goes to Google Drive, Jira and your Slack self-DM; on your
@@ -293,7 +309,7 @@ ai-sa-skills/
 ├── ACCESS-AND-SETUP.md          ← this guide
 ├── install.sh                   ← asks where things go, then installs (Part 0)
 └── claude-code/                 ← the skills' master copy, with placeholders
-    ├── customer-meeting-recap/  (SKILL.md, scripts/jira_ticket.py, scripts/gdrive.py, references/)
+    ├── customer-meeting-recap/  (SKILL.md, scripts/jira_ticket.py, scripts/gdrive.py, scripts/gong_transcript.py, references/)
     ├── customer-session-prep/   (SKILL.md)
     └── customer-recap-check/    (SKILL.md, scripts/recap_check.py), see Part D
 ```

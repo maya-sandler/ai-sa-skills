@@ -5,7 +5,9 @@ Check the customer folder's `CLAUDE.md` first, then the sources below. Glean res
 
 | Need | Where to look |
 |---|---|
-| Gong call transcript | Glean `read_document` with the Gong URL, or Glean `search` for `<customer>` with `app: gong` |
+| Gong call transcript | Glean `read_document` with the Gong URL (without the tracking after `id=`), then `scripts/gong_transcript.py` for a readable file (recap skill, Step 2). Always the full transcript: never Gong's summary, the "call is ready" email's Key points or Glean snippets |
+| Who an external `Speaker <hash>` is | Glean `search` for the call title with `app: gong`: its snippets read `Name: <words>`, and its filters list the external participants |
+| Gong "call is ready" emails | Glean `search` with `app: gmail`, query `Call recording and analysis is ready`, `sort_by_recency`. `read_document` on a result returns the raw Gmail message; `recap_check.py gong-email --file <saved result>` reads the call link, account, date and duration from it |
 | Every Gong call for the account (engagement history) | Glean `search` for `<customer>` with `app: gong`, `sort_by_recency` and `num_results: 30`. Page with the cursor until there are no more results. Titles often don't match session names, so match by date and transcript |
 | Earlier engagement folders (another SA's, a pilot) | Glean `search` with the customer's name and `container_filter` set to the parent folder URL to find the customer folder, then `query: *` with that folder's URL to list its decks and sheets. The Drive helper only sees Docs it created, so it lists nothing here |
 | Internal account overview | Slack `#ask-riley` threads that mention the account ID. Read the thread replies, since the search result often shows only the question |
@@ -16,6 +18,7 @@ Check the customer folder's `CLAUDE.md` first, then the sources below. Glean res
 | PS team / active projects | Glean `search` for `<customer> active projects` with `app: salesforce`. `employee_search` gives someone's role. Also check the SA handoff doc in the Drive folder |
 | Support tickets they opened | Glean `search` for `<customer>` with `app: zendesk`. Also try `app: jira`, which turns up engineering tickets that mention the customer. Add `sort_by_recency` |
 | Tech stack (SDKs, languages, infra) | Earlier recaps and discovery docs; Glean `search` for `<customer> SDK` or `<customer> architecture`; Glean `chat` for "What tech stack and LaunchDarkly SDKs does <customer> use?" |
+| The customer's Slack channels | **Only** the ones in `CLAUDE.md`'s Slack section, which come from the SA. `slack_read_channel` on each ID, `oldest` = the previous call. Never search for them, and never name them in a Doc or ticket |
 | Internal Slack discussion | Glean `search` with `app: slack`, or the Slack connector |
 | My Jira tickets for this customer | `acli jira workitem search --jql 'parent = <EPIC>' --fields key,summary,status --json --paginate` (search can't return `duedate`) |
 | One ticket's details | `acli jira workitem view <KEY> --fields summary,status,duedate,description --json` |

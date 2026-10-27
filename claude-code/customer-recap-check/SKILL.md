@@ -1,17 +1,21 @@
 ---
 name: customer-recap-check
-description: Automatically recap LaunchDarkly customer calls. On a schedule, finds today's finished meetings with the SA's active customers (Google Calendar), waits for each Gong call to appear in Glean, skips calls already recapped, runs customer-meeting-recap unattended, and reports in the SA's Slack self-DM, asking there when something is missing. Also sets the check up and changes its settings. Use when a scheduled task runs the recap check, or when the user (a LaunchDarkly Solutions Architect) asks to set up, run, pause, switch to live, or check on automatic meeting recaps.
+description: Automatically recap LaunchDarkly customer calls. On a schedule, finds Gong's "call recording is ready" emails (Gmail through Glean) for calls with the SA's active customers, waits for each call's full transcript in Glean, skips calls already recapped, runs customer-meeting-recap unattended, and reports in the SA's Slack self-DM, asking there for any missing links. Also sets the check up and changes its settings. Use when a scheduled task runs the recap check, or when the user (a LaunchDarkly Solutions Architect) asks to set up, run, pause, switch to live, or check on automatic meeting recaps.
 ---
 
 # Customer Recap Check (Claude Code)
 
 This skill turns every call with an **active customer** into a recap and Jira tickets, with no
 prompt from the SA. A Claude Code scheduled task runs it every hour on the SA's Mac. Each run
-checks today's finished meetings, recaps the new ones with `customer-meeting-recap`, and tells
-the SA in their **Slack self-DM**, asking there when something is missing.
+looks for new **Gong "call is ready" emails** in the SA's Gmail, recaps those calls with
+`customer-meeting-recap`, and tells the SA in their **Slack self-DM**, asking there when links
+are missing.
 
-It uses only sign-ins the SA already has (Google Calendar, Glean and Slack connectors, the Drive
-helper, `acli`). Never read or print anything in `~/.config/sa-skills/google/`,
+Gong emails the SA when a call's recording is ready, about two hours before Glean's Gong search
+returns the call, and only to the call's participants. So an email means the SA was on the call,
+and no calendar check is needed.
+
+It uses only sign-ins the SA already has (Glean and Slack connectors, the Drive helper, `acli`). Never read or print anything in `~/.config/sa-skills/google/`,
 `~/.config/acli/token.txt` or any `.env` file.
 
 ## Helpers
@@ -26,15 +30,23 @@ Write every helper command out in full; putting it in a shell variable breaks un
 |---|---|
 | `config get [KEY]` / `config set KEY VALUE` | Reads or sets one setting in `~/.config/sa-skills/config.json`, keeping the rest |
 | `customers init --folder ID` / `customers read --folder ID` | Creates the Active Customers Doc / returns its Active rows |
-| `calls get --id ID` / `calls mark --id ID --status S ...` / `calls held` | The processed-calls log in `~/.config/sa-skills/processed-calls.json` |
+| `calls get --id ID` / `calls mark --id ID --status S ...` | The processed-calls log in `~/.config/sa-skills/processed-calls.json`. Statuses: `waiting`, `done`, `held`, `skipped`, `error`, `dry-run` |
+| `calls waiting` / `calls held` | Calls still to recap (`waiting` or `dry-run`) / calls waiting for the SA in Slack (`held`, or `done` with links still missing) |
+| `gong-email --file PATH` | Reads a saved Gong "call is ready" email and prints its call ID, clean call link, title, account, date and duration |
 | `log add --kind activity\|audit --run RUN --text TEXT [--dry-run]` / `log flush --folder ID` | Queues one log line, stamped with the current time / appends the queued lines to this month's log Docs |
 | `slack-upload --url URL --file PATH` | Uploads a file's bytes to a Slack upload URL |
 
-The Drive helper (`gdrive.py`) is described in the `customer-meeting-recap` skill.
+`calls mark` options: `--customer`, `--date`, `--title`, `--url`, `--duration`, `--note`,
+`--slack-ts`, `--missing <links, comma-separated>` (`none` clears it) and `--reminded
+<YYYY-MM-DD>`. It keeps fields you leave out.
+
+The Drive helper (`gdrive.py`) and the transcript helper (`gong_transcript.py`) are described in
+the `customer-meeting-recap` skill.
 
 **Settings** (`config get`): `sa_drive_folder` (folder ID of the SA's Drive folder, holding the
 Active Customers Doc and the logs), `customers_dir`, `recap_check_mode` (`dry-run` or `live`;
-missing means `dry-run`), `slack_user_id` and `slack_dm_channel` (found by the run).
+missing means `dry-run`), `slack_user_id` and `slack_dm_channel` (found by the run), and
+`gong_emails_since` (when the last run looked for Gong emails, set by the run).
 
 ## Set up the check (when the SA asks)
 
@@ -52,14 +64,16 @@ Do these in order, telling the SA what each step did.
    create the task with the scheduled-tasks tool `create_scheduled_task`:
    - `taskId`: `customer-recap-check`, `title`: `Customer recap check`
    - `cronExpression`: e.g. `5 9-18 * * 1-5` (five past each hour, in local time)
-   - `description`: `Recap today's finished calls with active customers`
+   - `description`: `Recap new Gong calls with active customers`
    - `notifyOnCompletion`: `false` (the run notifies the SA itself, only when there's news)
    - `prompt`: `Run the customer-recap-check skill for one scheduled check now, following its "Each run" steps exactly. This run is unattended: never ask questions or wait for answers; post to my Slack self-DM as the skill says.`
 6. Tell the SA:
    - The desktop app must be open, and the Mac awake, for a check to run; a missed check runs
      at the next one.
-   - On the first runs, approve the tools it uses when asked (Calendar, Glean, Slack, Bash for
-     the helpers and `acli`), so later runs don't stop for permission.
+   - Gong must email them when a call is ready (Gong's email notifications on, the default),
+     and Glean must reach their Gmail. The check reads nothing else in their mail.
+   - On the first runs, approve the tools it uses when asked (Glean, Slack, Bash for the helpers
+     and `acli`), so later runs don't stop for permission.
    - It starts in **dry run**: for a week it only reports what it would do. To go live, they
      ask "switch the recap check to live".
 
@@ -74,7 +88,8 @@ Do these in order, telling the SA what each step did.
 ## Slack self-DM
 
 The check posts **only** to the SA's self-DM (their conversation with themselves): never to a
-channel, another person or a group, and it reads no other conversation.
+channel, another person or a group. It reads the self-DM, and, through the recap skill, only
+the customer channels and chats the SA listed in the customer's `CLAUDE.md`.
 
 - **Find it once:** the Slack tools' descriptions state the signed-in user's ID ("Current logged
   in user's user_id is U…"). Read the DM with that ID: `slack_read_channel` with `channel_id` =
@@ -101,103 +116,146 @@ with the same first line.
 
 ## Each run
 
-Keep a **run ID**, the local start time as `YYYYMMDD-HHMM`. Log as you go: an **activity** line
-for each step and tool call (`log add --kind activity`), and an **audit** line for each change
-made in Drive, Jira or Slack (`log add --kind audit`). In dry-run mode, add `--dry-run` to every
-log line. `log add` stamps each line with the time it runs, so run it right after the step or
-tool call it describes, in the same message as the next step's call. Never save lines up and
-add them together at the end: they'd all get the same time. Log lines name a call by customer, date and Gong call ID; never put transcript text,
-recap content, tokens or secrets in them.
+Keep a **run ID**, the local start time as `YYYYMMDD-HHMM`. Also note the start time in UTC
+(`date -u +%Y-%m-%dT%H:%M:%SZ`) for step 10. Log as you go: an **activity** line for each step
+and tool call (`log add --kind activity`), and an **audit** line for each change made in Drive,
+Jira or Slack (`log add --kind audit`). In dry-run mode, add `--dry-run` to every log line.
+`log add` stamps each line with the time it runs, so run it right after the step or tool call it
+describes, in the same message as the next step's call. Never save lines up and add them
+together at the end: they'd all get the same time. Log lines name a call by customer, date and
+Gong call ID; never put transcript text, recap content, email content, tokens or secrets in
+them.
 
-Handle at most **5 calls per run**; leave the rest for the next run.
+Recap at most **5 calls per run**; leave the rest waiting for the next run.
+
+**Missing links.** A recap needs the opportunity's links from the customer's `CLAUDE.md`: Drive
+folder, Salesforce opportunity, Vitalstatistix, session plan, and the customer's Slack channels
+and chats. When any are missing, the recap skill returns `held` with the list, and the check
+asks the SA **once**, in one Slack post listing all of them. What happens next:
+
+| Missing | No reply by the next run | Reply after the recap was made |
+|---|---|---|
+| **Drive folder**, or which opportunity it is | Stays held: no Doc can be made. Remind in the thread at most once a day | — |
+| Only other links (Salesforce, Vitalstatistix, session plan, Slack channels) | Recap and tickets are made with `Not found` for them; a follow-up in the thread lists the links still needed | Saved to `CLAUDE.md` for the next recap |
+
+Never work out a missing link yourself, and never search Slack or Glean for the customer's
+channels. Only the SA's answer counts.
 
 **1. Load settings.** `config get`. If `sa_drive_folder` is empty, the check isn't set up: post
 nothing, send a Claude notification ("The recap check isn't set up yet: ask Claude to set up the
-recap check"), and stop. Note the mode (`recap_check_mode`, default `dry-run`) and
-`customers_dir`.
+recap check"), and stop. Note the mode (`recap_check_mode`, default `dry-run`),
+`customers_dir` and `gong_emails_since`.
 
 **2. Slack self-DM.** Find or check it (above). If it can't be confirmed, carry on without
-Slack: use Claude notifications only, and log it.
+Slack: use Claude notifications only, and log it. With no Slack, nothing can be asked, so a call
+that would be held stays `waiting` and is tried again on the next run.
 
-**3. Answers to held calls.** `calls held`. For each held call with a `slack_ts`:
-`slack_read_thread` on the self-DM and that `ts`. Look only at replies from the SA
-(`slack_user_id`) after the post.
+**3. Replies in Slack.** `calls held`. For each call with a `slack_ts`: `slack_read_thread` on
+the self-DM and that `ts`. Look only at replies from the SA (`slack_user_id`) after the post (or
+after the last follow-up the check posted in that thread).
 
-- **An answer** (a Drive folder link, an opportunity name, other links, or "skip"): in live mode,
-  run `customer-meeting-recap` with a prompt starting `UNATTENDED RUN, RESUME`, giving the Gong
-  link, the customer folder, the meeting, and the SA's answer word for word. Read its
-  `RECAP_RESULT` and handle it as in step 9, posting in the same thread.
-- **"Not a customer call" or "ignore":** `calls mark --status skipped`, and confirm in the thread.
-- **No reply yet:** leave it held, and post nothing.
+| Call | SA's reply | Do |
+|---|---|---|
+| `held`, note `unclear-customer` | "yes" | `calls mark --status waiting --customer <C>`; it's recapped in step 7 |
+| `held`, any note | Links, an opportunity name, or "skip" | In live mode, read the transcript (step 7, "Transcript") and run `customer-meeting-recap` with a prompt starting `UNATTENDED RUN, RESUME`, giving the call details as in step 8 and the SA's answer word for word. Handle its `RECAP_RESULT` as in step 9, posting in the same thread |
+| `held`, any note | "Not a customer call" or "ignore" | `calls mark --status skipped`, and confirm in the thread |
+| `held`, its note lists only links other than the Drive folder and opportunity | None | In live mode, run the recap with a prompt starting `UNATTENDED RUN, NO ANSWER` (call details as in step 8). It writes `Not found` for the missing links. Handle its `RECAP_RESULT` as in step 9, in the same thread: the "recap ready" post lists the links still needed |
+| `held`, its note has `drive_folder`, `opportunity`, `new_opportunity` or `unclear-customer` | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
+| `done` with `missing` | Links | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section). Then `calls mark --missing <what's still missing, or none>`, and confirm in the thread |
+| `done` with `missing` | None | Nothing |
 
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. No Active rows: log
 "no active customers", flush the logs (step 10), and stop quietly.
 
-**5. Today's finished meetings.** Google Calendar `list_events` on the primary calendar, from
-the start of today to now. Keep events that:
+**5. New Gong emails.** Search Glean with `app: gmail`, query
+`Call recording and analysis is ready`, `sort_by_recency`, `num_results: 20`. Results from Gong
+have Source `gmailnative`, Owner `Gong`, and a subject like `<meeting title>: Call recording and
+analysis is ready`. Keep those **created** (the `Created` time, in UTC) after
+`gong_emails_since` (also UTC) minus one hour, or after the start of today if it's empty; never
+more than 3 days back. If all 20 are that new, page with the cursor. Ignore every other email,
+and read no other mail.
 
-- ended at least 15 minutes ago,
-- have the SA as an attendee who didn't decline, and
-- have a title containing one customer's **Meeting title words** (ignoring case).
+For each one, in order:
 
-An event matching two customers is **unclear** (step 6). Ignore all other events, including
-internal meetings, and never read their details beyond the title, time and attendees.
+1. Glean `read_document` on its `mail.google.com` link. The result has no structured content,
+   only the raw Gmail message, and is usually saved to a file because it's large. If it came
+   back inline, write it to a file in your scratchpad.
+2. `recap_check.py gong-email --file <that file>`. It prints `gong_call_id`, `call_url` (the
+   link without Gong's tracking), `title`, `account`, `date` and `duration`. It never prints the
+   email's "Key points", and you must not read or use them: the recap is written only from the
+   transcript.
+3. `calls get --id <gong_call_id>`. Any status at all: it's already known, skip it.
+4. **Match it to a customer:**
 
-**6. Find each meeting's Gong call.** Search Glean with `app: gong`, query `*`,
-`dynamic_search_result_filters` set to `account:<Gong account>`, sorted by recency. This returns
-only that customer's calls, newest first. (A search by meeting title for calls updated today
-mostly returns other customers' calls, so use it only as a fallback.) The call matches when
-it's from today and its title matches the meeting. The Gong call ID is the `id=` in its link.
+   | Email | Customer |
+   |---|---|
+   | `account` is one row's **Gong account** (ignoring case) | That row |
+   | No account matches, but the title contains exactly one row's **Meeting title words** | Unclear: post once to Slack ("Is *<title>* (<date>) a call with <customer>? Reply yes, or 'not a customer call'"), and `calls mark --status held --note unclear-customer --title ... --date ... --url ... --duration ... --slack-ts <ts> --reminded <today>` |
+   | No account matches, and the title has two rows' Meeting title words | Unclear, as above, naming both |
+   | No row matches | Not an active customer's call: skip it, and log only "not an active customer" |
 
-- **Not found yet:** Gong or Glean is still processing. Log "waiting" and leave it for the next
-  run. After 2 days, log it once as not found and stop looking.
-- **The title matches but the Gong account doesn't, or two customers match:** unclear. Post once
-  to Slack ("Is *<meeting title>* a call with <customer>? Reply yes, or 'not a customer call'"),
-  and `calls mark --status held --note unclear-customer --slack-ts <ts>`.
+5. Matched: `calls mark --id <gong_call_id> --status waiting --customer <Customer> --date <date>
+   --title <title> --url <call_url> --duration <duration>`.
 
-**7. Skip what's already done.** For each call:
+Delete any email files you wrote to the scratchpad when done.
 
-1. `calls get --id <call ID>`. Status `done`, `held` or `skipped` → skip it (held calls are
-   handled in step 3). Status `dry-run` → skip it in dry-run mode (already reported), and
-   handle it in live mode.
-2. In the customer's `CLAUDE.md`, find the opportunity's Drive folder (see step 8). If there is
-   one, `gdrive.py list --folder <ID> --contains "Meeting Recap – <YYYY-MM-DD>"` and `read` each
-   result. One naming this Gong call ID on its Recording line → `calls mark --status done
-   --note "recap already in Drive"`, and skip it.
+**6. Skip what's already done.** `calls waiting`. In dry-run mode, leave out calls with status
+`dry-run` (already reported). In live mode, a `dry-run` call first seen more than 2 days ago is
+`calls mark --status skipped --note "dry run only"`; recap the others like `waiting` ones. Take
+the calls left oldest first, at most 5 (with those resumed in step 3). For each:
 
-**8. Customer folder and Drive folder.** The customer's folder is
-`<customers_dir>/<Folder from the Active Customers Doc>`.
-
-- **No folder yet:** create it with a `CLAUDE.md` from the recap skill's
+- The customer's folder is `<customers_dir>/<Folder from the Active Customers Doc>`. **No folder
+  yet:** create it with a `CLAUDE.md` from the recap skill's
   `references/customer-folder-template.md`, filling in only the customer name and the SA.
-- **No Drive folder** (no opportunity in `CLAUDE.md` has one): post to Slack ("*<Customer>*
-  recap waiting: reply in this thread with the Drive folder link for this engagement"), and
-  `calls mark --status held --note needs-drive-folder --slack-ts <ts>`. Go to the next call.
+- In its `CLAUDE.md`, find the opportunity's Drive folder. If there is one, `gdrive.py list
+  --folder <ID> --contains "Meeting Recap – <YYYY-MM-DD>"` and `read` each result. One naming
+  this Gong call ID on its Recording line → `calls mark --status done --note "recap already in
+  Drive"`, and skip it.
 
-**9. Recap it.**
+**7. Transcript.** The recap is always written from the call's full transcript. For each call:
 
-- **Dry run:** don't run the recap skill. Post one Slack message per call ("Dry run:
-  would recap *<meeting title>* with <Customer>; Drive folder found / missing"), and
-  `calls mark --status dry-run`.
+1. Glean `read_document` on its `url` (the clean call link). If it returns no
+   `richDocumentData.content`, Gong or Glean is still processing.
+2. `python3 {{SKILLS_DIR}}/customer-meeting-recap/scripts/gong_transcript.py --file <saved
+   result> --out <scratchpad>/<customer>-<date>-transcript.txt`. It writes the transcript and
+   prints its length in `minutes`.
+3. **Not ready** (no content, the helper prints an error, or `minutes` is under half the call's
+   `duration`): log "waiting for transcript" and leave it for the next run. First seen more than
+   2 days ago: post once to Slack ("*<Customer>* call *<title>* (<date>): no transcript in Glean
+   after 2 days; recap it by hand"), and `calls mark --status error --note
+   "no transcript after 2 days"`.
+
+Never fall back to the email's Key points, Gong's call summary or Glean search snippets.
+
+**8. Recap it.**
+
+- **Dry run:** don't run the recap skill. Post one Slack message per call ("Dry run: would recap
+  *<title>* with <Customer>; links missing: <the links from the list above that `CLAUDE.md`
+  doesn't have, or none>"), and `calls mark --status dry-run`.
 - **Live:** run the `customer-meeting-recap` skill with a prompt starting `UNATTENDED RUN`:
 
   ```text
   UNATTENDED RUN
-  Gong link: <link>
+  Gong link: <url>
+  Gong call ID: <id>
+  Transcript file: <scratchpad>/<customer>-<date>-transcript.txt
   Customer folder: <customers_dir>/<Folder>
   Meeting: <title>, <YYYY-MM-DD>
   ```
 
-  Then read the `RECAP_RESULT` block it ends with:
+**9. Handle the result.** Read the `RECAP_RESULT` block the recap skill ends with:
 
-  | Status | Post to Slack | Then |
-  |---|---|---|
-  | `done` | "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file, and any `missing` links listed as "Not found: <links>" | `calls mark --status done`; audit lines for the recap Doc and each ticket |
-  | `held` | "*<Customer>* recap waiting: <its question> Reply in this thread." | `calls mark --status held --note <needs> --slack-ts <ts>` |
-  | `error` | "*<Customer>* recap failed: <error>" | `calls mark --status error --note <error>`; the next run doesn't retry it |
+| Status | Post to Slack | Then |
+|---|---|---|
+| `done` | "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file. If `missing` isn't empty, add "Links still needed: <links>. Reply in this thread to add them" | `calls mark --status done --missing <missing, or none> --slack-ts <ts>` (for a thread reply, keep the first post's `ts`); audit lines for the recap Doc and each ticket |
+| `held` | "*<Customer>* recap waiting: <its question> Reply in this thread." | `calls mark --status held --note <needs, comma-separated> --slack-ts <ts> --reminded <today>` |
+| `waiting` | Nothing | Leave it `waiting` for the next run |
+| `error` | "*<Customer>* recap failed: <error>" | `calls mark --status error --note <error>`; the next run doesn't retry it |
 
-  Send a Claude notification for every `held` and `error`, and for `done`.
+Send a Claude notification for every `held` and `error`, and for `done`. Delete the transcript
+file once the call is handled.
 
-**10. Finish.** Log the run's end with a one-line summary (calls found, done, held, skipped).
-Then `log flush --folder <sa_drive_folder>`. If the flush fails, the lines stay on the Mac and
-the next run adds them. When the run found nothing new, post nothing and send no notification.
+**10. Finish.** `config set gong_emails_since <this run's start time in UTC>`. Log the
+run's end with a one-line summary (emails found, done, held, waiting, skipped). Then `log flush
+--folder <sa_drive_folder>`. If the flush fails, the lines stay on the Mac and the next run adds
+them. When the run found nothing new, post nothing and send no notification.
