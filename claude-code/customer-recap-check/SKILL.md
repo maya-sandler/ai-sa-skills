@@ -160,7 +160,7 @@ after the last follow-up the check posted in that thread).
 | `held`, any note | Links, an opportunity name, or "skip" | In live mode, read the transcript (step 7, "Transcript") and run `customer-meeting-recap` with a prompt starting `UNATTENDED RUN, RESUME`, giving the call details as in step 8 and the SA's answer word for word. Handle its `RECAP_RESULT` as in step 9, posting in the same thread |
 | `held`, any note | "Not a customer call" or "ignore" | `calls mark --status skipped`, and confirm in the thread |
 | `held`, its note lists only links other than the Drive folder and opportunity | None | In live mode, run the recap with a prompt starting `UNATTENDED RUN, NO ANSWER` (call details as in step 8). It writes `Not found` for the missing links. Handle its `RECAP_RESULT` as in step 9, in the same thread: the "recap ready" post lists the links still needed |
-| `held`, its note has `drive_folder`, `opportunity`, `new_opportunity` or `unclear-customer` | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
+| `held`, its note has `drive_folder`, `opportunity`, `new_opportunity` or `unclear-customer` (older runs wrote `needs-drive-folder`) | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
 | `done` with `missing` | Links | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section). Then `calls mark --missing <what's still missing, or none>`, and confirm in the thread |
 | `done` with `missing` | None | Nothing |
 
