@@ -98,16 +98,19 @@ when you forward it.
 
 ### `customer-recap-check`
 
-You set it up once ("set up the recap check"). After that, a scheduled task runs it every hour in
-your working hours, and you don't prompt anything:
+You set it up once ("set up the recap check"). After that, a scheduled task runs it every hour,
+by default from 9:05 to 21:05 on weekdays, and you don't prompt anything. The schedule is the only
+trigger: a call whose Gong email arrives by about 21:00 is recapped the same day, and a later one
+at the first check of the next weekday.
 
 1. **Reads your Active Customers list,** a Google Doc in your own Drive folder that you edit from
    any device: one row per customer you're working with (name, folder, Gong account, words in
    your meeting titles, Active or Paused). No links or email domains go in it.
-2. **Finds Gong's "call is ready" emails** since the last run (Gmail, through Glean). Gong sends
-   one to each participant when a call's recording is ready, so it knows you were on the call.
-   It matches each email to a customer by the Gong account (or the meeting title words) and
-   reads only the call link, account, date and duration from it.
+2. **Finds Gong's "call is ready" emails for your active customers only,** since the last run
+   (Gmail, through Glean). It searches once per Active row, by its Gong account and meeting title
+   words, so emails about other calls are never opened and make no work. Gong sends one to each
+   participant when a call's recording is ready, so it knows you were on the call. It reads only
+   the call link, account, date and duration from each email.
 3. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
    each recap records, so a call is never recapped twice.
 4. **Waits for the full transcript** in Glean, and writes the recap only from it.
@@ -131,22 +134,22 @@ your working hours, and you don't prompt anything:
 
 ```mermaid
 flowchart TD
-    T([Every hour, in your working hours]) --> S[Load settings and check your Slack self-DM]
-    M([You run /customer-meeting-recap]) --> MA{Links missing?}
+    T([Scheduled task: every hour, 9:05 to 21:05 on weekdays]) --> AC[Read your Active Customers list]
+    T --> A[Read your replies in the Slack threads of held calls]
+    M([Manual prompting skill /customer-meeting-recap]) --> MA{Links missing?}
     MA -- No --> R
     MA -- Yes --> MQ[Ask once, in chat and in your self-DM]
     MQ -- You answer in chat --> R
     MQ -- No answer in chat --> H
-    S --> A[Read your replies in held calls' Slack threads]
     A -- Links or skip --> R
     A -- No reply, Drive folder known --> NF[Use Not found for the missing links] --> R
     A -- No reply, Drive folder missing --> RM[Remind in the thread, once a day]
-    S --> E[Find Gong's call-is-ready emails since the last run]
-    E --> C{Call with an active customer?}
-    C -- No --> X([Ignore])
+    AC --> E[Search Gmail for Gong's call-is-ready emails about those customers only]
+    E --> C{Gong account matches an Active row?}
+    C -- No --> X([Skip, never opened again])
     C -- Unclear --> Q1[Ask in Slack which customer] --> H
     C -- Yes --> D{Already recapped?}
-    D -- Yes --> X
+    D -- Yes --> X2([Skip it])
     D -- No --> TR{Full transcript in Glean?}
     TR -- Not yet --> W([Wait for the next run])
     TR -- Yes --> L{Links missing?}

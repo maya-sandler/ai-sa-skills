@@ -61,10 +61,10 @@ Do these in order, telling the SA what each step did.
    title words, Status Active). No links or email domains go in that Doc.
 3. **Slack self-DM.** Find it as "Slack self-DM" below describes, and save it.
 4. **Mode.** Set `config set recap_check_mode dry-run` unless the SA asks for live.
-5. **Schedule.** Ask which hours to run (suggest every hour, 9:00 to 18:00 on weekdays). Then
+5. **Schedule.** Ask which hours to run (suggest every hour, 9:00 to 21:00 on weekdays, so a call that ends by about 20:00 is recapped the same day). Then
    create the task with the scheduled-tasks tool `create_scheduled_task`:
    - `taskId`: `customer-recap-check`, `title`: `Customer recap check`
-   - `cronExpression`: e.g. `5 9-18 * * 1-5` (five past each hour, in local time)
+   - `cronExpression`: e.g. `5 9-21 * * 1-5` (five past each hour, in local time)
    - `description`: `Recap new Gong calls with active customers`
    - `notifyOnCompletion`: `false` (the run notifies the SA itself, only when there's news)
    - `prompt`: `Run the customer-recap-check skill for one scheduled check now, following its "Each run" steps exactly. This run is unattended: never ask questions or wait for answers; post to my Slack self-DM as the skill says.`
@@ -169,15 +169,18 @@ after the last follow-up the check posted in that thread).
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. No Active rows: log
 "no active customers", and stop quietly.
 
-**5. New Gong emails.** Search Glean with `app: gmail`, query
-`Call recording and analysis is ready`, `sort_by_recency`, `num_results: 20`. Results from Gong
-have Source `gmailnative`, Owner `Gong`, and a subject like `<meeting title>: Call recording and
-analysis is ready`. Keep those **created** (the `Created` time, in UTC) after
-`gong_emails_since` (also UTC) minus one hour, or after the start of today if it's empty; never
-more than 3 days back. If all 20 are that new, page with the cursor. Ignore every other email,
-and read no other mail.
+**5. New Gong emails, for active customers only.** Look only for emails about the Active rows
+from step 4, so calls with anyone else are never opened or worked on. For each Active row, search
+Glean with `app: gmail`, query `Call recording and analysis is ready <Gong account>`,
+`sort_by_recency`, `num_results: 20`; if the row has **Meeting title words**, search again with
+those in place of the Gong account. Results from Gong have Source `gmailnative`, Owner `Gong`,
+and a subject like `<meeting title>: Call recording and analysis is ready`. Keep those
+**created** (the `Created` time, in UTC) after `gong_emails_since` (also UTC) minus one hour, or
+after the start of today if it's empty; never more than 3 days back. If all 20 are that new, page
+with the cursor. Drop duplicates found by more than one search. Never search for Gong emails in
+general, ignore every other email, and read no other mail.
 
-For each one, in order:
+For each email kept, in order:
 
 1. Glean `read_document` on its `mail.google.com` link. The result has no structured content,
    only the raw Gmail message, and is usually saved to a file because it's large. If it came
@@ -194,7 +197,7 @@ For each one, in order:
    | `account` is one row's **Gong account** (ignoring case) | That row |
    | No account matches, but the title contains exactly one row's **Meeting title words** | Unclear: post once to Slack ("Is *<title>* (<date>) a call with <customer>? Reply yes, or 'not a customer call'"), and `calls mark --status held --note unclear-customer --title ... --date ... --url ... --duration ... --slack-ts <ts> --reminded <today>` |
    | No account matches, and the title has two rows' Meeting title words | Unclear, as above, naming both |
-   | No row matches | Not an active customer's call: skip it, and log only "not an active customer" |
+   | No row matches (the search matched other text in the email) | Not an active customer's call: skip it, `calls mark --status skipped --note "not an active customer"` so it isn't opened again, and log only that |
 
 5. Matched: `calls mark --id <gong_call_id> --status waiting --customer <Customer> --date <date>
    --title <title> --url <call_url> --duration <duration>`.
