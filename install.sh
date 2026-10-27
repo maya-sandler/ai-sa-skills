@@ -78,12 +78,12 @@ read -r -p "Base Drive folder URL [${prev_history:-none}]: " history
 history_drive_folder="${history:-${prev_history:-none}}"
 history_drive_folder="${history_drive_folder%%\?*}"
 
-# 3c. Optional: your own Drive folder for automatic recaps (Active Customers list + logs).
+# 3c. Your own Drive folder for the Active Customers Doc, which every customer skill reads.
 prev_sa_folder="$(saved sa_drive_folder)"
 echo
-echo "Optional, for automatic recaps (customer-recap-check): your own Google Drive folder for"
-echo "the Active Customers list. Paste the folder link, or press"
-echo "Enter to skip (you can set it later by asking Claude to set up the recap check)."
+echo "Your own Google Drive folder for the Active Customers Doc: the list of customers the skills"
+echo "work on, with their links. The installer creates the Doc there. Paste the folder link, or"
+echo "press Enter to skip (you can set it later by asking Claude to set up the recap check)."
 read -r -p "Your Drive folder URL [${prev_sa_folder:-none}]: " sa_folder
 sa_folder="${sa_folder%%\?*}"; sa_folder="${sa_folder##*/folders/}"; sa_folder="${sa_folder%%/*}"
 sa_drive_folder="${sa_folder:-$prev_sa_folder}"
@@ -154,6 +154,16 @@ echo "✓ Drive helper libraries ready"
 # 7. What's still needed (sign-ins are yours to do).
 echo
 echo "Status:"
+if [ -z "$sa_drive_folder" ]; then
+  echo "  ✗ Active Customers Doc: no Drive folder given. Rerun ./install.sh with one"
+elif [ -f "$CONFIG_DIR/google/token.json" ]; then
+  doc="$("$VENV/bin/python" -W ignore "$skills_dir/customer-recap-check/scripts/recap_check.py" customers init --folder "$sa_drive_folder" 2>/dev/null \
+    | "$VENV/bin/python" -I -c 'import json,sys; d=json.load(sys.stdin); f=d.get("created") or d.get("exists") or {}; print(("created " if d.get("created") else "") + f.get("webViewLink",""))' 2>/dev/null || true)"
+  if [ -n "$doc" ]; then echo "  ✓ Active Customers Doc: $doc"
+  else echo "  ✗ Active Customers Doc: couldn't create it. Check you can edit the Drive folder, then rerun ./install.sh"; fi
+else
+  echo "  ✗ Active Customers Doc: created when you rerun ./install.sh after signing in to Google Drive"
+fi
 if command -v acli >/dev/null 2>&1; then
   if acli jira auth status >/dev/null 2>&1; then echo "  ✓ Jira: acli is signed in"
   else echo "  ✗ Jira: acli isn't signed in. See ACCESS-AND-SETUP.md, Part A (API token)"; fi

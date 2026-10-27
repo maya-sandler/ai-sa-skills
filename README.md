@@ -4,18 +4,18 @@ Claude Code skills that take the busywork out of running customer engagements as
 Solutions Architect (SA): writing up each call, filing the follow-up tasks, and getting ready
 for the next session.
 
-- **`customer-meeting-recap`**: after a call, turns the recording or transcript into a recap
-  Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the
-  LaunchDarkly team committed to.
-- **`customer-session-prep`**: before a call, writes a one-page prep brief (a Google Doc in the
-  same folder) from that folder's recaps, so you know in two minutes what to deliver, what's
-  still open, and what to ask.
-- **`customer-engagement-prep`**: the same brief plus the engagement's history (earlier
-  engagements, older folders, every Gong call), for a new engagement or an account you're picking
-  up.
-- **`customer-recap-check`**: runs the recap for you. Every hour it looks for Gong's "call is
-  ready" emails for calls with your active customers, recaps the new ones, and tells you in your
-  Slack self-DM, asking there when links are missing.
+| Skill | What it does | How it runs |
+|---|---|---|
+| **`customer-meeting-recap`** | After a call, turns the recording or transcript into a recap Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the LaunchDarkly team committed to | **Manual:** you prompt it (`/customer-meeting-recap`). The recap check also runs it automatically |
+| **`customer-session-prep`** | Before a call, writes a one-page prep brief (a Google Doc in the same folder) from that folder's recaps, so you know in two minutes what to deliver, what's still open, and what to ask | **Manual:** you prompt it (`/customer-session-prep`) |
+| **`customer-engagement-prep`** | The same brief plus the engagement's history (earlier engagements, older folders, every Gong call), for a new engagement or an account you're picking up | **Manual:** you prompt it (`/customer-engagement-prep`) |
+| **`customer-shared-notes`** | Adds each recap to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`, newest meeting on top, without Jira tickets or internal links | **Manual** (`/customer-shared-notes`), and **automatic:** the recap check runs it after every recap |
+| **`customer-recap-check`** | Every hour, looks for Gong's "call is ready" emails for your Active customers, recaps the new ones, updates the Master Engagement Doc, and tells you in your Slack self-DM, asking there when links are missing | **Automatic workflow:** a scheduled task in the Claude desktop app, set up once ("set up the recap check") |
+
+**Where you call them from:** Claude Code on your Mac, either the Claude desktop app's **Code
+tab** or `claude` in a terminal. You can't call them from Slack or the Chat tab. Slack is only
+where the recap check reports to you and asks for missing links; you answer by replying in the
+post's thread, and the next hourly run reads your reply.
 
 ## The problem these solve
 
@@ -149,6 +149,10 @@ at the first check of the next weekday.
    a section per run, with an **activity** line for every step and tool call and an **audit**
    line for every change made in Drive, Jira or Slack. Nothing is logged to Drive.
 
+#### `customer-recap-check` workflow
+
+What each hourly run does, and how a recap you start yourself joins it when links are missing:
+
 ```mermaid
 flowchart TD
     T([Scheduled task: every hour, 9:05 to 21:05 on weekdays]) --> AC[Read your Active Customers list]
@@ -204,8 +208,9 @@ know:
 
 Its links are copied into each customer's `CLAUDE.md` for the skills' reference. If the two
 disagree, the Doc wins. A customer that isn't in the Doc, or isn't Active, gets a message
-asking you to mark it Active, and nothing else. "Set up the recap check" creates the Doc. Without
-it, the skills work from `CLAUDE.md` alone.
+asking you to mark it Active, and nothing else. `install.sh` creates the Doc (question 6), and
+"set up the recap check" creates it if it's still missing. Without it, the skills work from
+`CLAUDE.md` alone.
 
 ## How it keeps track of each customer
 
@@ -235,7 +240,9 @@ book, not notes: the customer's Jira epic, team, latest call and tech stack, and
 Everything the skills *produce* (recaps, briefs, transcripts) goes to Google Drive. Nothing but
 this `CLAUDE.md` is kept on your computer.
 
-## What you need
+## Install
+
+### Prerequisites
 
 - **Claude Code**, with the **Glean** connector enabled.
 - **macOS** with Homebrew and Python 3 (tested on macOS; Linux should work with small changes).
@@ -243,7 +250,7 @@ this `CLAUDE.md` is kept on your computer.
 - **Edit access to each customer's Google Drive folder**, plus a **Google OAuth client** you
   create in your company's Google Cloud organization.
 
-### About the credentials
+#### About the credentials
 
 You create **two credentials, once**. Neither is an API key you paste anywhere: both stay in
 private files on your computer, and Claude never reads them.
@@ -261,7 +268,7 @@ sign-in are blocked by admin policy, and Claude has no Google Drive connector wi
 The API token and your own OAuth client are what work. [ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md)
 has the full details, including what we found blocked.
 
-## Install
+### Run the installer
 
 ```bash
 git clone <this repo's URL>
@@ -271,7 +278,7 @@ git clone <this repo's URL>
 cd ai-sa-skills && ./install.sh
 ```
 
-`install.sh` asks four questions and two optional ones, then fills your answers into the skills and installs them:
+`install.sh` asks five questions and one optional one, then fills your answers into the skills, installs them, and creates your Active Customers Doc:
 
 | # | Question | Example answer | Why it's asked |
 |---|---|---|---|
@@ -280,9 +287,11 @@ cd ai-sa-skills && ./install.sh
 | 3 | Your Jira site | `yourcompany.atlassian.net` (offered automatically once `acli` is signed in) | For ticket links |
 | 4 | Your Jira project key | `ABC` | Your tickets go to *your* project, not someone else's |
 | 5 | Optional: your team's base Google Drive folder for customer projects | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | The prep skill searches it for earlier engagements with an existing customer. If you skip it, the skill asks for folders when it needs them |
-| 6 | Optional: your own Google Drive folder for automatic recaps | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | Holds the recap check's Active Customers list. If you skip it, setting up the recap check asks for it |
+| 6 | Your own Google Drive folder for the Active Customers Doc | `https://drive.google.com/drive/folders/<id>` | The installer creates the **Active Customers** Doc there (or finds the one already there). Every customer skill reads it. If you skip it, setting up the recap check asks for it |
 
-It also installs the Drive helper's Python libraries, then shows which sign-ins are still needed.
+It also installs the Drive helper's Python libraries, then shows which sign-ins are still needed
+and the link to your Active Customers Doc. The Doc needs the Google Drive sign-in, so on a first
+install it's created when you run `./install.sh` again after signing in.
 Your answers are saved in `~/.config/sa-skills/config.json` and offered as defaults next time.
 Rerunning it keeps the settings the skills saved there themselves, such as your Slack self-DM.
 It never asks for, reads or prints a token or secret.
@@ -294,8 +303,9 @@ It never asks for, reads or prints a token or secret.
 - **Part B, Google Drive:** create a Google Cloud project and OAuth client, save it with the
   helper's `setup-client` command (the secret stays hidden as you paste), sign in in the browser.
 
-Run `./install.sh` again afterwards: it fills in your Jira site for you and shows that both
-sign-ins are done.
+Run `./install.sh` again afterwards: it fills in your Jira site for you, shows that both
+sign-ins are done, and creates your Active Customers Doc. Open it from the link it prints and add
+a row per customer, marked Active.
 
 ## How to use it best
 

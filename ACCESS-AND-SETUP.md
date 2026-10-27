@@ -236,12 +236,15 @@ connected and enabled for Claude Code:
 | **Glean** | Search and read document: Gong's emails in your Gmail, the call's transcript, the customer's Drive folder |
 | **Slack** | Read channel and read thread (your self-DM, and the customer channels you listed), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts to your self-DM |
 
-**D2. Have a Drive folder of your own** for the check's Active Customers list. You need edit access to it. Give it to `install.sh` (question
-6), or when you set the check up.
+**D2. Have a Drive folder of your own** for the Active Customers Doc, which every customer skill
+reads. You need edit access to it. Give it to `install.sh` (question 6): once you're signed in to
+Google Drive, the installer creates the Doc there and prints its link. Otherwise setting up the
+check creates it.
 
 **D3. Set it up.** In any Claude Code session, say **"set up the recap check"**. It:
 
-1. Saves your Drive folder and creates the **Active Customers** Doc there. Add one row per
+1. Saves your Drive folder and creates the **Active Customers** Doc there, if the installer
+   hasn't already. Add one row per
    customer, with its Documentation name, Drive folder link, Slack channels, Gong account and
    Status Active. Every customer skill works only on Active rows (see the README).
 2. Finds your Slack self-DM from your Slack user ID and saves it. Nothing to look up yourself.
