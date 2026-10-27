@@ -11,8 +11,8 @@ confirmed them. Slack channels come only from the SA's answer: never search for 
 ```markdown
 # <Customer>
 
-Customer folder for <Customer>. Use the `customer-meeting-recap` and `customer-session-prep`
-skills here. Everything they produce is saved as Google Docs in the opportunity's Drive folder.
+Customer folder for <Customer>. Use the `customer-meeting-recap`, `customer-session-prep` and
+`customer-engagement-prep` skills here. Everything they produce is saved as Google Docs in the opportunity's Drive folder.
 Nothing is saved locally except this file.
 
 Never read `.env` files, `~/.config/acli/token.txt`, or anything in `~/.config/sa-skills/google/`.

@@ -15,7 +15,7 @@ SRC="$HERE/claude-code"
 CONFIG_DIR="$HOME/.config/sa-skills"
 CONFIG="$CONFIG_DIR/config.json"
 VENV="$HOME/.local/share/sa-skills/venv"
-SKILLS=(customer-meeting-recap customer-session-prep customer-recap-check)
+SKILLS=(customer-meeting-recap customer-session-prep customer-engagement-prep customer-recap-check)
 
 # Show paths under your home folder as ~/..., the way the skills use them.
 tilde() { case "$1" in "$HOME"*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' "$1" ;; esac; }

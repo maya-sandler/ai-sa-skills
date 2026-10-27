@@ -1,13 +1,15 @@
 # SA customer skills: access and setup
 
-Two Claude Code skills for LaunchDarkly Solutions Architects:
+Claude Code skills for LaunchDarkly Solutions Architects:
 
 - **`customer-meeting-recap`** turns a customer call (Gong link or transcript) into a recap
   Google Doc in the customer's Drive folder, and creates your follow-up Jira tasks under the
   customer's epic in your Jira project.
 - **`customer-session-prep`** writes a one-page prep brief for your next session as a Google Doc
-  in the same folder: status, what you owe them, their open questions, their support tickets and
-  their tech stack.
+  in the same folder, from that folder's recaps: status, what you owe the customer, open
+  questions, support tickets and tech stack.
+- **`customer-engagement-prep`** writes the same brief plus the engagement's history, for a new
+  engagement or an account you're picking up.
 
 Everything they produce goes to Google Drive. Nothing is saved on your Mac except a small
 `CLAUDE.md` per customer with the links.
@@ -240,7 +242,8 @@ connected and enabled for Claude Code:
 **D3. Set it up.** In any Claude Code session, say **"set up the recap check"**. It:
 
 1. Saves your Drive folder and creates the **Active Customers** Doc there. Add one row per
-   customer you're working with; no links or email domains go in it.
+   customer, with its Documentation name, Drive folder link, Slack channels, Gong account and
+   Status Active. Every customer skill works only on Active rows (see the README).
 2. Finds your Slack self-DM from your Slack user ID and saves it. Nothing to look up yourself.
 3. Asks which hours to run, then creates an hourly scheduled task in the desktop app.
 4. Starts in **dry-run mode**: for a while it only reports what it would do.
@@ -310,6 +313,7 @@ ai-sa-skills/
 └── claude-code/                 ← the skills' master copy, with placeholders
     ├── customer-meeting-recap/  (SKILL.md, scripts/jira_ticket.py, scripts/gdrive.py, scripts/gong_transcript.py, references/)
     ├── customer-session-prep/   (SKILL.md)
+    ├── customer-engagement-prep/ (SKILL.md)
     └── customer-recap-check/    (SKILL.md, scripts/recap_check.py), see Part D
 ```
 

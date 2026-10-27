@@ -1,6 +1,6 @@
 # ai-sa-skills
 
-Three Claude Code skills that take the busywork out of running customer engagements as a
+Claude Code skills that take the busywork out of running customer engagements as a
 Solutions Architect (SA): writing up each call, filing the follow-up tasks, and getting ready
 for the next session.
 
@@ -8,7 +8,11 @@ for the next session.
   Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the
   LaunchDarkly team committed to.
 - **`customer-session-prep`**: before a call, writes a one-page prep brief (a Google Doc in the
-  same folder) so you know in two minutes what to deliver, what's still open, and what to ask.
+  same folder) from that folder's recaps, so you know in two minutes what to deliver, what's
+  still open, and what to ask.
+- **`customer-engagement-prep`**: the same brief plus the engagement's history (earlier
+  engagements, older folders, every Gong call), for a new engagement or an account you're picking
+  up.
 - **`customer-recap-check`**: runs the recap for you. Every hour it looks for Gong's "call is
   ready" emails for calls with your active customers, recaps the new ones, and tells you in your
   Slack self-DM, asking there when links are missing.
@@ -76,25 +80,39 @@ You say something like *"Recap this call: \<Gong link\>"*, or paste a transcript
 
 ### `customer-session-prep`
 
-You say something like *"Prep me for the next Acme session"*. It reads the latest recaps, the
-session plan, your tickets under the customer's epic, the customer's recent support tickets and
-what's known about their tech stack, then saves a one-page brief as
-`<Customer> – Session Prep – <date>`:
+The quick prep. You say something like *"Prep me for the next Acme session"*. It looks only at the
+customer's current Drive folder (the one you give, or the Folder link in your Active Customers
+Doc): the recaps in it, the follow-up items from them that are still open (checking their Jira
+tickets), the customer's support tickets, tech stack, session plan and links, and the Slack
+channels in your Active Customers Doc. It saves a one-page brief as
+`<Customer> – Session Prep – <session name> (<date or date TBD>)`:
 
-- Goal for the session and the latest status (from the newest recap, or the latest Gong call if
-  it's newer)
-- **For an existing customer** picked up from an earlier engagement: where that engagement left
-  off. It shows each planned session from the old kickoff deck, checked against the Gong calls
-  as happened, partly happened or never happened, plus promises still open.
+- Goal for the session and the latest status
 - **Deliver in \<session name\> (\<date or date TBD\>):** finished tickets to show or explain, and
   open ones that are due
-- The customer's open questions, each with a draft answer or a docs link
+- The customer's next steps and questions, each with a draft answer or a docs link
 - Action items to follow up on, split into the customer's items and LD's internal items
 - Support tickets, tech stack, and where the engagement stands in the session plan
 - All the links in one place, each labelled with the customer's name
 
-The brief always uses the customer's name and "LD" instead of "they" or "we", so it reads clearly
-when you forward it.
+It doesn't look at earlier engagements, older folders or the customer's other Gong calls. That's
+`customer-engagement-prep`.
+
+### `customer-engagement-prep`
+
+The full prep, with the engagement's history: use it for a new engagement, or an existing customer
+(an existing logo) you're picking up. On top of what `customer-session-prep` reads, it searches the
+team's older Drive folders and every Gong call for the account, and saves
+`<Customer> – Engagement Prep and Next Session (<session name>, <date or date TBD>)`, for example
+`Acme Corp – Engagement Prep and Next Session (kickoff, date TBD)`:
+
+- Everything in the session prep brief
+- **Where the earlier engagement left off:** each planned session from the old kickoff deck,
+  checked against the Gong calls as happened, partly happened or never happened, plus promises
+  still open and worksheets never filled in
+
+Both briefs use the customer's name and "LD" instead of "they" or "we", so they read clearly
+when you forward them.
 
 ### `customer-recap-check`
 
@@ -103,12 +121,11 @@ by default from 9:05 to 21:05 on weekdays, and you don't prompt anything. The sc
 trigger: a call whose Gong email arrives by about 21:00 is recapped the same day, and a later one
 at the first check of the next weekday.
 
-1. **Reads your Active Customers list,** a Google Doc in your own Drive folder that you edit from
-   any device: one row per customer you're working with (name, folder, Gong account, words in
-   your meeting titles, Active or Paused). No links or email domains go in it.
+1. **Reads your Active Customers Doc** (see "Your Active Customers Doc" below) and works only on
+   the rows marked Active.
 2. **Finds Gong's "call is ready" emails for your active customers only,** since the last run
-   (Gmail, through Glean). It searches once per Active row, by its Gong account and meeting title
-   words, so emails about other calls are never opened and make no work. Gong sends one to each
+   (Gmail, through Glean). It searches once per Active row, by its Gong account and Documentation
+   name, so emails about other calls are never opened and make no work. Gong sends one to each
    participant when a call's recording is ready, so it knows you were on the call. It reads only
    the call link, account, date and duration from each email.
 3. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
@@ -164,6 +181,31 @@ flowchart TD
 In dry-run mode the check stops before the recap: it posts "would recap" for each call instead.
 
 It starts in **dry-run mode**: it only reports what it would do, until you switch it to live.
+
+## Your Active Customers Doc
+
+One Google Doc in your own Drive folder, `Active Customers`, that you keep yourself and can edit
+from any device. **Every customer skill reads it first and works only on customers marked
+Active** (any case), so old customers are left alone. Put in it whatever you want the skills to
+know:
+
+| Customer | Documentation name | Folder link | Slack channels | Gong account | Status |
+| --- | --- | --- | --- | --- | --- |
+| Acme | Acme Corp | `<Drive folder link>` | `<Slack channel links>` | Acme Corporation | Active |
+
+- **Customer:** your name for it. Its local folder is that name in lowercase, with hyphens.
+- **Documentation name:** the name used in every Doc, e.g. `Acme Corp – Meeting Recap –
+  2026-10-26`. Blank: the Customer value is used.
+- **Folder link:** the Drive folder where the customer's recaps and prep briefs live.
+- **Slack channels:** the customer's channels and chats (shared channel, internal account channel,
+  group DMs). The skills read them for context and never name them in a Doc or ticket.
+- **Gong account:** the account name Gong shows, so the recap check finds the customer's calls.
+- **Status:** Active or Not active.
+
+Its links are copied into each customer's `CLAUDE.md` for the skills' reference. If the two
+disagree, the Doc wins. A customer that isn't in the Doc, or isn't Active, gets a message
+asking you to mark it Active, and nothing else. "Set up the recap check" creates the Doc. Without
+it, the skills work from `CLAUDE.md` alone.
 
 ## How it keeps track of each customer
 
@@ -283,7 +325,8 @@ Type the skill as a slash command, followed by whatever you have for this call:
 | Command | When |
 |---|---|
 | `/customer-meeting-recap` | After a call: recap Doc + Jira tickets |
-| `/customer-session-prep` | Before a call: one-page prep brief |
+| `/customer-session-prep` | Before a call: one-page prep brief from the current folder's recaps |
+| `/customer-engagement-prep` | Before a call, with the engagement's history: new engagements and accounts you're picking up |
 
 You can also just ask ("recap this call", "prep me for Thursday's session") and Claude picks the
 right skill. The slash command makes sure.
@@ -326,13 +369,14 @@ customer has several.
 /customer-session-prep for the 2026-11-04 session, RSA100 opportunity
 ```
 
-**Picking up an existing customer:** point the skill at the earlier engagement's Drive folders.
+**Picking up an existing customer:** use `/customer-engagement-prep`, and point it at the earlier
+engagement's Drive folders.
 It finds the customer's folder through Glean and checks the old session plan against the Gong
 calls. If the new Drive folder doesn't exist yet, say so: the skill keeps the brief as a local
 draft and saves it once you send the folder.
 
 ```
-/customer-session-prep use the latest Gong recording. Earlier work is in <Drive folder link>. Don't save yet, no Drive folder.
+/customer-engagement-prep use the latest Gong recording. Earlier work is in <Drive folder link>. Don't save yet, no Drive folder.
 ```
 
 If anything is missing, the skill asks for all of it in **one** message, and never guesses a
@@ -375,7 +419,8 @@ the next one.
 | `install.sh` | Asks the questions, then installs the skills and the Drive helper's libraries |
 | `ACCESS-AND-SETUP.md` | Full setup: credentials step by step, what works and what's blocked, troubleshooting |
 | `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `scripts/gong_transcript.py` (Gong transcript → readable file), `references/` |
-| `claude-code/customer-session-prep/` | The prep skill: `SKILL.md` |
+| `claude-code/customer-session-prep/` | The quick prep skill: `SKILL.md` |
+| `claude-code/customer-engagement-prep/` | The prep skill with the engagement's history: `SKILL.md` |
 | `claude-code/customer-recap-check/` | The automatic recap check: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, the run log, Slack uploads, Gong emails) |
 
 ## Rules for this repo

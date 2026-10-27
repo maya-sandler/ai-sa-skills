@@ -57,8 +57,9 @@ Do these in order, telling the SA what each step did.
    folder link (the folder for the Active Customers Doc). Save the folder ID (the
    part after `/folders/`, without `?usp=...`) with `config set sa_drive_folder <ID>`.
 2. **Active Customers Doc.** Run `customers init --folder <ID>` and give the SA its link. Ask
-   them to add a row per customer they're working with (Customer, Folder, Gong account, Meeting
-   title words, Status Active). No links or email domains go in that Doc.
+   them to add a row per customer they're working with: Customer, Documentation name, Folder
+   link (the customer's Drive folder), Slack channels, Gong account, and Status Active. Every
+   customer skill reads it, as the recap skill's "Active Customers Doc" section says.
 3. **Slack self-DM.** Find it as "Slack self-DM" below describes, and save it.
 4. **Mode.** Set `config set recap_check_mode dry-run` unless the SA asks for live.
 5. **Schedule.** Ask which hours to run (suggest every hour, 9:00 to 21:00 on weekdays, so a call that ends by about 20:00 is recapped the same day). Then
@@ -166,14 +167,15 @@ after the last follow-up the check posted in that thread).
 | `done` with `missing` | Links | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section). Then `calls mark --missing <what's still missing, or none>`, and confirm in the thread |
 | `done` with `missing` | None | Nothing |
 
-**4. Active customers.** `customers read --folder <sa_drive_folder>`. No Active rows: log
-"no active customers", and stop quietly.
+**4. Active customers.** `customers read --folder <sa_drive_folder>`. It returns only rows whose
+Status is Active (any case); never work on any other customer. No Active rows: log "no active
+customers", and stop quietly.
 
 **5. New Gong emails, for active customers only.** Look only for emails about the Active rows
 from step 4, so calls with anyone else are never opened or worked on. For each Active row, search
 Glean with `app: gmail`, query `Call recording and analysis is ready <Gong account>`,
-`sort_by_recency`, `num_results: 20`; if the row has **Meeting title words**, search again with
-those in place of the Gong account. Results from Gong have Source `gmailnative`, Owner `Gong`,
+`sort_by_recency`, `num_results: 20`; search again with its **Documentation name** in place of
+the Gong account, if they differ. Results from Gong have Source `gmailnative`, Owner `Gong`,
 and a subject like `<meeting title>: Call recording and analysis is ready`. Keep those
 **created** (the `Created` time, in UTC) after `gong_emails_since` (also UTC) minus one hour, or
 after the start of today if it's empty; never more than 3 days back. If all 20 are that new, page
@@ -195,8 +197,8 @@ For each email kept, in order:
    | Email | Customer |
    |---|---|
    | `account` is one row's **Gong account** (ignoring case) | That row |
-   | No account matches, but the title contains exactly one row's **Meeting title words** | Unclear: post once to Slack ("Is *<title>* (<date>) a call with <customer>? Reply yes, or 'not a customer call'"), and `calls mark --status held --note unclear-customer --title ... --date ... --url ... --duration ... --slack-ts <ts> --reminded <today>` |
-   | No account matches, and the title has two rows' Meeting title words | Unclear, as above, naming both |
+   | No account matches, but the title contains exactly one row's **Customer** or **Documentation name** | Unclear: post once to Slack ("Is *<title>* (<date>) a call with <customer>? Reply yes, or 'not a customer call'"), and `calls mark --status held --note unclear-customer --title ... --date ... --url ... --duration ... --slack-ts <ts> --reminded <today>` |
+   | No account matches, and the title has two rows' names | Unclear, as above, naming both |
    | No row matches (the search matched other text in the email) | Not an active customer's call: skip it, `calls mark --status skipped --note "not an active customer"` so it isn't opened again, and log only that |
 
 5. Matched: `calls mark --id <gong_call_id> --status waiting --customer <Customer> --date <date>
@@ -209,10 +211,11 @@ Delete any email files you wrote to the scratchpad when done.
 `calls mark --status skipped --note "dry run only"`; recap the others like `waiting` ones. Take
 the calls left oldest first, at most 5 (with those resumed in step 3). For each:
 
-- The customer's folder is `<customers_dir>/<Folder from the Active Customers Doc>`. **No folder
-  yet:** create it with a `CLAUDE.md` from the recap skill's
-  `references/customer-folder-template.md`, filling in only the customer name and the SA.
-- In its `CLAUDE.md`, find the opportunity's Drive folder. If there is one, `gdrive.py list
+- The customer's folder is `<customers_dir>/<local_folder from the row>`. **No folder yet:**
+  create it with a `CLAUDE.md` from the recap skill's `references/customer-folder-template.md`,
+  filling in only the customer name and the SA.
+- The Drive folder is the row's **Folder link**, or else the opportunity's Drive folder in
+  `CLAUDE.md`. If there is one, `gdrive.py list
   --folder <ID> --contains "Meeting Recap – <YYYY-MM-DD>"` and `read` each result. One naming
   this Gong call ID on its Recording line → `calls mark --status done --note "recap already in
   Drive"`, and skip it.

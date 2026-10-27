@@ -91,7 +91,47 @@ RECAP_RESULT
 A `RESUME` or `NO ANSWER` run finishes the call: write the recap if none was saved, and create
 any tickets not created yet, adding their keys to the recap's Jira column.
 
+## Active Customers Doc (every customer skill)
+
+The SA keeps an **Active Customers** Google Doc: one row per customer, with Customer,
+Documentation name, Folder link, Slack channels, Gong account and Status. All the customer skills
+(`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`,
+`customer-shared-notes`, `customer-recap-check`) read it first, and **work only on customers
+whose Status is Active** (any case), so old customers are left alone.
+
+```bash
+~/.local/share/sa-skills/venv/bin/python -W ignore {{SKILLS_DIR}}/customer-recap-check/scripts/recap_check.py customers read --folder <sa_drive_folder> --customer "<customer>"
+```
+
+`sa_drive_folder` is in `~/.config/sa-skills/config.json` (`recap_check.py config get
+sa_drive_folder`). The command prints the row, or `"customer": null` if it isn't in the Doc.
+
+| Result | What to do |
+|---|---|
+| `active: true` | Carry on, using the row as below |
+| The row's Status is anything else, or `"customer": null` | Stop before reading or writing anything. Tell the SA: "<Customer> isn't marked Active in your Active Customers Doc (<doc link>). Mark it Active, or add a row, and run me again." In an unattended run, return `error` with that reason |
+| `sa_drive_folder` is empty, or the Doc doesn't exist yet | Carry on with `CLAUDE.md` alone, and say once that the Active Customers Doc isn't set up ("set up the recap check" creates it) |
+
+**Using the row.** Its values come from the SA, so they count like the SA's own answer:
+
+- **Documentation name** (`documentation_name`, already the Customer value when blank): the
+  customer's name in every Doc name and heading, in place of `<Customer>`.
+- **Folder link:** the Drive folder where this customer's recaps and prep briefs live. It's the
+  Drive folder of the opportunity being worked on: the `CLAUDE.md` entry that has this folder.
+  If no entry has it, and `CLAUDE.md` has no opportunity or exactly one without a Drive folder,
+  write it into that entry (or a new one). If other entries have other folders, ask which
+  opportunity it is (unattended: return `held` with `needs: ["opportunity"]`).
+- **Slack channels:** the channels and chats to read for context. Copy them into `CLAUDE.md`'s
+  **Slack** section; `none` means there are none. They're never named in a Doc or ticket.
+- **Local folder** (`local_folder`): the customer's folder is `{{CUSTOMERS_DIR}}/<local_folder>/`.
+
+When the row and `CLAUDE.md` disagree, the row wins: update `CLAUDE.md` to match. A link the row
+leaves blank is still taken from `CLAUDE.md`, or asked for as Step 1 says.
+
 ## Step 1: Customer context
+
+First check the customer's row in the Active Customers Doc (above): stop if it isn't Active, and
+use its links.
 
 The session usually runs in the customer folder (`{{CUSTOMERS_DIR}}/<customer>/`). Its
 `CLAUDE.md` has the customer name, epic key, team, and an **Opportunities** list: one entry per
@@ -159,7 +199,8 @@ entry doesn't have, stop at the first source that has it:
 the SA for **every** missing link in **one** message, naming the opportunity:
 - Drive folder, Salesforce opportunity, Vitalstatistix and session plan, if this opportunity's
   entry doesn't have them;
-- the customer's **Slack channels and chats**, if `CLAUDE.md` has no Slack section: the shared
+- the customer's **Slack channels and chats**, if neither the Active Customers row nor
+  `CLAUDE.md` has them: the shared
   customer channel, an internal account channel, group DMs. Ask for each one's link (in Slack:
   right-click it → Copy link).
 

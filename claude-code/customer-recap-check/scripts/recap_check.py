@@ -13,6 +13,9 @@ Commands (every one prints JSON):
 
   customers init --folder ID            create the Active Customers Doc in that folder, if missing
   customers read --folder ID [--all]    rows of the Active Customers Doc (Status Active only, unless --all)
+  customers read --folder ID --customer NAME
+                                        one customer's row, any status, matched by Customer,
+                                        Documentation name or folder name; "customer": null if absent
 
   calls get --id CALL_ID                what happened to a Gong call before, or null
   calls mark --id CALL_ID --status S [--customer C] [--date D] [--title T] [--url U]
@@ -61,21 +64,25 @@ SECRET_WORDS = ("token", "secret", "password", "key")
 
 CUSTOMERS_TEMPLATE = """# Active Customers
 
-The meeting-recap check only recaps calls with customers on this list marked **Active**: it
-starts when Gong emails you that a call is ready, and matches the call to a row here. Add a row per customer you're working with; set Status to
-Paused to leave one out. No links or email domains here: links live in each customer's
-CLAUDE.md.
+The customer skills only look at customers marked Active in this document. Add a row per
+customer and mark it Active or Not active, and add links to Slack and Google Drive. The links
+also live in each customer's CLAUDE.md for the skills' reference.
 
-- **Customer:** the name you use, the same as the customer's folder name.
-- **Folder:** the customer's folder inside your customer folders, e.g. acme/.
+- **Customer:** the name you use for the customer. Its local folder is that name in lowercase,
+  with hyphens (Acme Corp: acme-corp/).
+- **Documentation name:** the customer's name as written in Doc names, e.g. "Acme Corp – Meeting
+  Recap – 2026-10-26". Blank: the Customer value is used.
+- **Folder link:** the Google Drive folder where the customer's prep and recap Docs live.
+- **Slack channels:** links to the customer's Slack channels and chats (shared channel,
+  internal account channel, group DMs), one per line or comma-separated. The skills read them for
+  context, and never name or link them in a Doc or ticket. Write "none" if there are none.
 - **Gong account:** the account name Gong shows for the customer's calls.
-- **Meeting title words:** words that appear in the titles of your meetings with them (a
-  backup, when Gong shows another account name).
-- **Status:** Active or Paused. The example row is ignored.
+- **Status:** Active or Not active. Only Active customers are worked on. The example row is
+  ignored.
 
-| Customer | Folder | Gong account | Meeting title words | Status |
-| --- | --- | --- | --- | --- |
-| Acme | acme/ | Acme Corporation | Acme | Example |
+| Customer | Documentation name | Folder link | Slack channels | Gong account | Status |
+| --- | --- | --- | --- | --- | --- |
+| Acme | Acme Corp | https://drive.google.com/drive/folders/<id> | https://<workspace>.slack.com/archives/<id> | Acme Corporation | Example |
 """
 
 
@@ -167,6 +174,35 @@ def parse_table(md):
     return rows
 
 
+URL = re.compile(r"https?://[^\s)\]|,]+")
+
+
+def slug(name):
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def customer_row(row):
+    """One row of the Doc, with its derived values: the name for Doc names, the Drive folder ID,
+    the local folder, and the Slack links."""
+    get = lambda *keys: next((row[k] for k in keys if row.get(k)), "")
+    customer = get("customer")
+    folder = get("folder link", "folder")
+    folder_url = (URL.findall(folder) or [""])[0]
+    folder_id = re.search(r"/folders/([A-Za-z0-9_-]+)", folder_url)
+    slack = get("slack channels", "slack")
+    return {
+        "customer": customer,
+        "documentation_name": get("documentation name") or customer,
+        "folder_link": folder_url,
+        "folder_id": folder_id.group(1) if folder_id else "",
+        "local_folder": slug(customer),
+        "slack_channels": "none" if slack.strip().lower() == "none" else URL.findall(slack),
+        "gong_account": get("gong account"),
+        "status": get("status"),
+        "active": get("status").strip().lower() == "active",
+    }
+
+
 def cmd_customers(a):
     g = gdrive()
     svc = g.drive()
@@ -180,9 +216,20 @@ def cmd_customers(a):
         return
     if not found:
         fail("no Active Customers Doc in that folder yet: run 'customers init --folder %s'" % a.folder)
-    rows = parse_table(doc_markdown(g, svc, found[0]["id"]))
+    rows = [customer_row(r) for r in parse_table(doc_markdown(g, svc, found[0]["id"]))]
+    rows = [r for r in rows if r["customer"] and r["status"].lower() != "example"]
+    if a.customer:
+        want = a.customer.strip().lower()
+        rows = [r for r in rows if want in (r["customer"].lower(), r["documentation_name"].lower(),
+                                            r["local_folder"])]
+        if not rows:
+            out({"doc": found[0].get("webViewLink"), "customer": None,
+                 "note": "not in the Active Customers Doc"})
+            return
+        out({"doc": found[0].get("webViewLink"), "customer": rows[0]})
+        return
     if not a.all:
-        rows = [r for r in rows if r.get("status", "").lower() == "active"]
+        rows = [r for r in rows if r["active"]]
     out({"doc": found[0].get("webViewLink"), "customers": rows})
 
 
@@ -353,6 +400,7 @@ def main():
     cu.add_argument("action", choices=["init", "read"])
     cu.add_argument("--folder", required=True)
     cu.add_argument("--all", action="store_true")
+    cu.add_argument("--customer")
 
     ca = sub.add_parser("calls")
     ca.add_argument("action", choices=["get", "mark", "waiting", "held"])
