@@ -125,8 +125,40 @@ your working hours, and you don't prompt anything:
    a question you answer by replying in the post's thread. The next run reads your reply and
    finishes the call. A Claude notification on your Mac and phone pings you too, since Slack
    doesn't notify you about posts made as you.
-8. **Logs everything** to two monthly Google Docs in your Drive folder: an **activity log** (every
-   run and tool call) and an **audit log** (every change made in Drive, Jira or Slack).
+8. **Logs everything** to one Markdown file on your Mac, `~/.config/sa-skills/recap-check-log.md`:
+   a section per run, with an **activity** line for every step and tool call and an **audit**
+   line for every change made in Drive, Jira or Slack. Nothing is logged to Drive.
+
+```mermaid
+flowchart TD
+    T([Every hour, in your working hours]) --> S[Load settings and check your Slack self-DM]
+    M([You run /customer-meeting-recap]) --> MA{Links missing?}
+    MA -- No --> R
+    MA -- Yes --> MQ[Ask once, in chat and in your self-DM]
+    MQ -- You answer in chat --> R
+    MQ -- No answer in chat --> H
+    S --> A[Read your replies in held calls' Slack threads]
+    A -- Links or skip --> R
+    A -- No reply, Drive folder known --> NF[Use Not found for the missing links] --> R
+    A -- No reply, Drive folder missing --> RM[Remind in the thread, once a day]
+    S --> E[Find Gong's call-is-ready emails since the last run]
+    E --> C{Call with an active customer?}
+    C -- No --> X([Ignore])
+    C -- Unclear --> Q1[Ask in Slack which customer] --> H
+    C -- Yes --> D{Already recapped?}
+    D -- Yes --> X
+    D -- No --> TR{Full transcript in Glean?}
+    TR -- Not yet --> W([Wait for the next run])
+    TR -- Yes --> L{Links missing?}
+    L -- No --> R
+    L -- Yes --> Q2[Ask once in Slack for all of them] --> H[(Held call, waiting for your reply)]
+    H -. next run .-> A
+    R[Write the recap Doc and create the Jira tickets] --> SN[Add the meeting to the shared meeting notes, never twice]
+    SN --> P[Post recap ready in your self-DM, with any links still needed]
+    P --> LG[Log the run in recap-check-log.md]
+```
+
+In dry-run mode the check stops before the recap: it posts "would recap" for each call instead.
 
 It starts in **dry-run mode**: it only reports what it would do, until you switch it to live.
 
@@ -203,7 +235,7 @@ cd ai-sa-skills && ./install.sh
 | 3 | Your Jira site | `yourcompany.atlassian.net` (offered automatically once `acli` is signed in) | For ticket links |
 | 4 | Your Jira project key | `ABC` | Your tickets go to *your* project, not someone else's |
 | 5 | Optional: your team's base Google Drive folder for customer projects | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | The prep skill searches it for earlier engagements with an existing customer. If you skip it, the skill asks for folders when it needs them |
-| 6 | Optional: your own Google Drive folder for automatic recaps | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | Holds the recap check's Active Customers list and its activity and audit logs. If you skip it, setting up the recap check asks for it |
+| 6 | Optional: your own Google Drive folder for automatic recaps | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | Holds the recap check's Active Customers list. If you skip it, setting up the recap check asks for it |
 
 It also installs the Drive helper's Python libraries, then shows which sign-ins are still needed.
 Your answers are saved in `~/.config/sa-skills/config.json` and offered as defaults next time.
@@ -326,7 +358,7 @@ any Claude Code session, say:
 | "Switch the recap check to live" | Starts writing recaps and creating tickets; until then it only reports what it would do |
 | "Run the recap check now" | One check, right away, in this session |
 | "Pause the recap check" | Stops the schedule until you resume it |
-| "What did the recap check do today?" | Reads this month's activity and audit logs |
+| "What did the recap check do today?" | Reads the run log, `~/.config/sa-skills/recap-check-log.md` |
 
 To answer a question it asks in Slack, reply in that post's thread, e.g. with the Drive folder
 link. It needs Gong's "call is ready" emails turned on (they are by default) and Glean able to
@@ -341,7 +373,7 @@ the next one.
 | `ACCESS-AND-SETUP.md` | Full setup: credentials step by step, what works and what's blocked, troubleshooting |
 | `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `scripts/gong_transcript.py` (Gong transcript → readable file), `references/` |
 | `claude-code/customer-session-prep/` | The prep skill: `SKILL.md` |
-| `claude-code/customer-recap-check/` | The automatic recap check: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, logs, Slack uploads, Gong emails) |
+| `claude-code/customer-recap-check/` | The automatic recap check: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, the run log, Slack uploads, Gong emails) |
 
 ## Rules for this repo
 

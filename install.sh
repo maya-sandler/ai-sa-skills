@@ -82,7 +82,7 @@ history_drive_folder="${history_drive_folder%%\?*}"
 prev_sa_folder="$(saved sa_drive_folder)"
 echo
 echo "Optional, for automatic recaps (customer-recap-check): your own Google Drive folder for"
-echo "the Active Customers list and the activity and audit logs. Paste the folder link, or press"
+echo "the Active Customers list. Paste the folder link, or press"
 echo "Enter to skip (you can set it later by asking Claude to set up the recap check)."
 read -r -p "Your Drive folder URL [${prev_sa_folder:-none}]: " sa_folder
 sa_folder="${sa_folder%%\?*}"; sa_folder="${sa_folder##*/folders/}"; sa_folder="${sa_folder%%/*}"

@@ -234,8 +234,7 @@ connected and enabled for Claude Code:
 | **Glean** | Search and read document: Gong's emails in your Gmail, the call's transcript, the customer's Drive folder |
 | **Slack** | Read channel and read thread (your self-DM, and the customer channels you listed), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts to your self-DM |
 
-**D2. Have a Drive folder of your own** for the check's files: the Active Customers list and the
-monthly activity and audit logs. You need edit access to it. Give it to `install.sh` (question
+**D2. Have a Drive folder of your own** for the check's Active Customers list. You need edit access to it. Give it to `install.sh` (question
 6), or when you set the check up.
 
 **D3. Set it up.** In any Claude Code session, say **"set up the recap check"**. It:
@@ -261,8 +260,8 @@ with a reminder at most once a day.
 
 The desktop app must be open and your Mac awake at check time; a missed check runs at the next
 one. Everything the check produces goes to Google Drive, Jira and your Slack self-DM; on your
-Mac it keeps only `~/.config/sa-skills/processed-calls.json` (Gong call IDs and outcomes) and
-any log lines it couldn't save to Drive yet.
+Mac it keeps only `~/.config/sa-skills/processed-calls.json` (Gong call IDs and outcomes) and its
+run log, `~/.config/sa-skills/recap-check-log.md`.
 
 ## Rules for tokens and secrets
 

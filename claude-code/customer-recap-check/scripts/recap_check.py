@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Helper for the customer-recap-check skill: settings, processed calls, the Active Customers
-Doc, the activity and audit logs, Slack file uploads, and Gong "call is ready" emails.
+Doc, the run log, Slack file uploads, and Gong "call is ready" emails.
 
 Run it with the Drive helper's Python (it reuses gdrive.py from the customer-meeting-recap
 skill, installed next to this one):
@@ -24,8 +24,8 @@ Commands (every one prints JSON):
                                         links still missing
 
   log add --kind activity|audit --run RUN_ID --text TEXT [--dry-run]
-                                        queue one log line (time is added for you)
-  log flush --folder ID                 append queued lines to this month's log Docs in Drive
+                                        append one line, stamped with the current time, to the
+                                        run log ~/.config/sa-skills/recap-check-log.md
 
   slack-upload --url URL --file PATH    upload a file's bytes to a Slack upload URL
 
@@ -50,12 +50,12 @@ import urllib.request
 HOME_CONFIG = os.path.expanduser("~/.config/sa-skills")
 CONFIG = os.path.join(HOME_CONFIG, "config.json")
 CALLS = os.path.join(HOME_CONFIG, "processed-calls.json")
-LOG_DIR = os.path.join(HOME_CONFIG, "logs")
-PENDING = os.path.join(LOG_DIR, "pending.jsonl")
+LOG_FILE = os.path.join(HOME_CONFIG, "recap-check-log.md")
+# Lines queued by older versions, which flushed them to Drive Docs: moved into LOG_FILE.
+PENDING = os.path.join(HOME_CONFIG, "logs", "pending.jsonl")
+LOG_KINDS = ("activity", "audit")
 STATUSES = ("waiting", "done", "held", "skipped", "error", "dry-run")
 CUSTOMERS_DOC = "Active Customers"
-LOG_DOC = {"activity": "Recap Workflow – Activity Log – %s",
-           "audit": "Recap Workflow – Audit Log – %s"}
 # Settings that hold credentials never live in config.json, but refuse them anyway.
 SECRET_WORDS = ("token", "secret", "password", "key")
 
@@ -219,50 +219,43 @@ def cmd_calls(a):
 # --- logs -----------------------------------------------------------------
 
 def cmd_log(a):
-    if a.action == "add":
-        now = datetime.datetime.now()
-        line = {"kind": a.kind, "month": now.strftime("%Y-%m"), "run": a.run,
-                "text": "%s · %s%s" % (now.strftime("%Y-%m-%d %H:%M:%S"),
-                                             "dry run · " if a.dry_run else "", a.text)}
-        os.makedirs(LOG_DIR, exist_ok=True)
-        fd = os.open(PENDING, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-        with os.fdopen(fd, "a") as f:
-            f.write(json.dumps(line) + "\n")
-        out({"queued": line["text"]})
-        return
-
+    lines = []
     try:
         with open(PENDING) as f:
-            queued = [json.loads(l) for l in f if l.strip()]
+            lines = [json.loads(l) for l in f if l.strip()]
     except FileNotFoundError:
-        queued = []
-    if not queued:
-        out({"flushed": 0})
-        return
-    groups = {}
-    for q in queued:
-        groups.setdefault((q["kind"], q["month"]), []).append(q)
-    g = gdrive()
-    svc = g.drive()
-    written = []
+        pass
+    now = datetime.datetime.now()
+    lines.append({"kind": a.kind, "run": a.run,
+                  "text": "%s · %s%s" % (now.strftime("%Y-%m-%d %H:%M:%S"),
+                                        "dry run · " if a.dry_run else "", a.text)})
     try:
-        for (kind, month), items in sorted(groups.items()):
-            name = LOG_DOC[kind] % month
-            found = g.find(svc, a.folder, name=name)
-            text = doc_markdown(g, svc, found[0]["id"]).rstrip() if found else "# %s" % name
-            run = None
-            for q in items:
-                if q["run"] != run:
-                    run = q["run"]
-                    text += "\n\n## Run %s\n" % run
-                text += "\n- %s" % q["text"]
-            f = save_markdown(g, svc, a.folder, name, text + "\n")
-            written.append({"doc": name, "lines": len(items), "link": f.get("webViewLink")})
-    except Exception as e:  # keep the queue so the next run can retry
-        out({"error": "log flush failed, lines kept locally: %s" % e, "written": written})
-        sys.exit(1)
-    os.remove(PENDING)
-    out({"flushed": len(queued), "docs": written})
+        with open(LOG_FILE) as f:
+            text = f.read()
+        add = ""
+    except FileNotFoundError:
+        text = ""
+        add = ("# Recap check log\n\nOne section per run, oldest first. **activity**: a step or "
+               "tool call. **audit**: a change made in Drive, Jira or Slack.\n")
+    i = text.rfind("\n## Run ")
+    run = text[i + 8:text.index("\n", i + 1)].strip() if i >= 0 else None
+    for q in lines:
+        if q["run"] != run:
+            run = q["run"]
+            add += "\n## Run %s\n\n" % run
+        when, _, rest = q["text"].partition(" · ")
+        add += "- %s · %s · %s\n" % (when, q["kind"], rest)
+    os.makedirs(HOME_CONFIG, exist_ok=True)
+    fd = os.open(LOG_FILE, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    with os.fdopen(fd, "a") as f:
+        f.write(add)
+    if os.path.exists(PENDING):
+        os.remove(PENDING)
+        try:
+            os.rmdir(os.path.dirname(PENDING))
+        except OSError:
+            pass
+    out({"logged": add.rstrip().splitlines()[-1][2:], "file": LOG_FILE})
 
 
 # --- Slack ----------------------------------------------------------------
@@ -369,11 +362,10 @@ def main():
         ca.add_argument(opt)
 
     lg = sub.add_parser("log")
-    lg.add_argument("action", choices=["add", "flush"])
-    lg.add_argument("--kind", choices=sorted(LOG_DOC))
+    lg.add_argument("action", choices=["add"])
+    lg.add_argument("--kind", choices=LOG_KINDS)
     lg.add_argument("--run")
     lg.add_argument("--text")
-    lg.add_argument("--folder")
     lg.add_argument("--dry-run", action="store_true")
 
     su = sub.add_parser("slack-upload")
@@ -388,8 +380,6 @@ def main():
         fail("calls %s needs --id" % a.action)
     if a.cmd == "log" and a.action == "add" and not (a.kind and a.run and a.text):
         fail("log add needs --kind, --run and --text")
-    if a.cmd == "log" and a.action == "flush" and not a.folder:
-        fail("log flush needs --folder")
     {"config": cmd_config, "customers": cmd_customers, "calls": cmd_calls,
      "log": cmd_log, "slack-upload": cmd_slack_upload, "gong-email": cmd_gong_email}[a.cmd](a)
 

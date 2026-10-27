@@ -34,7 +34,7 @@ Write every helper command out in full; putting it in a shell variable breaks un
 | `calls get --id ID` / `calls mark --id ID --status S ...` | The processed-calls log in `~/.config/sa-skills/processed-calls.json`. Statuses: `waiting`, `done`, `held`, `skipped`, `error`, `dry-run` |
 | `calls waiting` / `calls held` | Calls still to recap (`waiting` or `dry-run`) / calls waiting for the SA in Slack (`held`, or `done` with links still missing) |
 | `gong-email --file PATH` | Reads a saved Gong "call is ready" email and prints its call ID, clean call link, title, account, date and duration |
-| `log add --kind activity\|audit --run RUN --text TEXT [--dry-run]` / `log flush --folder ID` | Queues one log line, stamped with the current time / appends the queued lines to this month's log Docs |
+| `log add --kind activity\|audit --run RUN --text TEXT [--dry-run]` | Appends one line, stamped with the current time, to the run log `~/.config/sa-skills/recap-check-log.md` (one section per run) |
 | `slack-upload --url URL --file PATH` | Uploads a file's bytes to a Slack upload URL |
 
 `calls mark` options: `--customer`, `--date`, `--title`, `--url`, `--duration`, `--note`,
@@ -45,7 +45,7 @@ The Drive helper (`gdrive.py`) and the transcript helper (`gong_transcript.py`) 
 the `customer-meeting-recap` skill.
 
 **Settings** (`config get`): `sa_drive_folder` (folder ID of the SA's Drive folder, holding the
-Active Customers Doc and the logs), `customers_dir`, `recap_check_mode` (`dry-run` or `live`;
+Active Customers Doc), `customers_dir`, `recap_check_mode` (`dry-run` or `live`;
 missing means `dry-run`), `slack_user_id` and `slack_dm_channel` (found by the run), and
 `gong_emails_since` (when the last run looked for Gong emails, set by the run).
 
@@ -54,7 +54,7 @@ missing means `dry-run`), `slack_user_id` and `slack_dm_channel` (found by the r
 Do these in order, telling the SA what each step did.
 
 1. **SA Drive folder.** If `config get sa_drive_folder` is empty, ask the SA for their Drive
-   folder link (the folder for the Active Customers Doc and the logs). Save the folder ID (the
+   folder link (the folder for the Active Customers Doc). Save the folder ID (the
    part after `/folders/`, without `?usp=...`) with `config set sa_drive_folder <ID>`.
 2. **Active Customers Doc.** Run `customers init --folder <ID>` and give the SA its link. Ask
    them to add a row per customer they're working with (Customer, Folder, Gong account, Meeting
@@ -83,8 +83,8 @@ Do these in order, telling the SA what each step did.
 - **Switch to live / back to dry run:** `config set recap_check_mode live` (or `dry-run`).
 - **Pause or resume:** the scheduled-tasks tool `update_scheduled_task` on `customer-recap-check`.
 - **Run it now:** do one run of "Each run" below, in this session.
-- **What did it do?** Read this month's Activity Log and Audit Log Docs in the SA Drive folder
-  (`gdrive.py list --folder <ID> --contains "Recap Workflow"`, then `read`).
+- **What did it do?** Read the run log, `~/.config/sa-skills/recap-check-log.md` (newest run
+  at the end).
 
 ## Slack self-DM
 
@@ -119,9 +119,9 @@ with the same first line.
 ## Each run
 
 Keep a **run ID**, the local start time as `YYYYMMDD-HHMM`. Also note the start time in UTC
-(`date -u +%Y-%m-%dT%H:%M:%SZ`) for step 10. Log as you go: an **activity** line for each step
-and tool call (`log add --kind activity`), and an **audit** line for each change made in Drive,
-Jira or Slack (`log add --kind audit`). In dry-run mode, add `--dry-run` to every log line.
+(`date -u +%Y-%m-%dT%H:%M:%SZ`) for step 10. Log as you go, in the one local run log: an **activity**
+line for each step and tool call (`log add --kind activity`), and an **audit** line for each
+change made in Drive, Jira or Slack (`log add --kind audit`). Logs never go to Drive. In dry-run mode, add `--dry-run` to every log line.
 `log add` stamps each line with the time it runs, so run it right after the step or tool call it
 describes, in the same message as the next step's call. Never save lines up and add them
 together at the end: they'd all get the same time. Log lines name a call by customer, date and
@@ -167,7 +167,7 @@ after the last follow-up the check posted in that thread).
 | `done` with `missing` | None | Nothing |
 
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. No Active rows: log
-"no active customers", flush the logs (step 10), and stop quietly.
+"no active customers", and stop quietly.
 
 **5. New Gong emails.** Search Glean with `app: gmail`, query
 `Call recording and analysis is ready`, `sort_by_recency`, `num_results: 20`. Results from Gong
@@ -281,6 +281,5 @@ Don't retry a `held` or `error` on a later run. Never run it in dry-run mode, or
 that isn't `done`.
 
 **10. Finish.** `config set gong_emails_since <this run's start time in UTC>`. Log the
-run's end with a one-line summary (emails found, done, held, waiting, skipped). Then `log flush
---folder <sa_drive_folder>`. If the flush fails, the lines stay on the Mac and the next run adds
-them. When the run found nothing new, post nothing and send no notification.
+run's end with a one-line summary (emails found, done, held, waiting, skipped). When the run
+found nothing new, post nothing and send no notification.
