@@ -68,21 +68,15 @@ The customer skills only look at customers marked Active in this document. Add a
 customer and mark it Active or Not active, and add links to Slack and Google Drive. The links
 also live in each customer's CLAUDE.md for the skills' reference.
 
-- **Customer:** the name you use for the customer. Its local folder is that name in lowercase,
-  with hyphens (Acme Corp: acme-corp/).
-- **Documentation name:** the customer's name as written in Doc names, e.g. "Acme Corp – Meeting
-  Recap – 2026-10-26". Blank: the Customer value is used.
-- **Folder link:** the Google Drive folder where the customer's prep and recap Docs live.
-- **Slack channels:** links to the customer's Slack channels and chats (shared channel,
-  internal account channel, group DMs), one per line or comma-separated. The skills read them for
-  context, and never name or link them in a Doc or ticket. Write "none" if there are none.
-- **Gong account:** the account name Gong shows for the customer's calls.
-- **Status:** Active or Not active. Only Active customers are worked on. The example row is
-  ignored.
+- **Customer:** the name you use for the customer.
+- **Documentation name:** the customer's name as written in Doc names. Leave blank if it's the
+  same as the Customer value.
+- **Folder link:** in Google Drive.
+- **Status:** Active or Not active. Only Active customers are worked on.
 
 | Customer | Documentation name | Folder link | Slack channels | Gong account | Status |
 | --- | --- | --- | --- | --- | --- |
-| Acme | Acme Corp | https://drive.google.com/drive/folders/<id> | https://<workspace>.slack.com/archives/<id> | Acme Corporation | Example |
+| Acme | Acme Corp | (Drive folder link) | (Slack channel links) | Acme Corporation | Example |
 """
 
 
