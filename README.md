@@ -117,11 +117,11 @@ your working hours, and you don't prompt anything:
    needed in the thread; a later reply is saved for the next recap. Only a missing Drive folder
    keeps the call held, since there's nowhere to save the recap, with a reminder at most once a
    day.
-6. **Updates the shared meeting notes:** after each finished recap, runs `customer-shared-notes`
+6. **Updates the Master Engagement Doc:** after each finished recap, runs `customer-shared-notes`
    to add the meeting to the opportunity's customer-facing `<Customer> & LaunchDarkly – Meeting
    Notes` Doc. It runs only once the recap is saved, never in dry-run mode, and never adds a
    meeting twice.
-7. **Posts to your Slack self-DM:** "recap ready" with the links, including the shared notes, or
+7. **Posts to your Slack self-DM:** "recap ready" with the links, including the Master Engagement Doc, or
    a question you answer by replying in the post's thread. The next run reads your reply and
    finishes the call. A Claude notification on your Mac and phone pings you too, since Slack
    doesn't notify you about posts made as you.
@@ -153,7 +153,7 @@ flowchart TD
     L -- No --> R
     L -- Yes --> Q2[Ask once in Slack for all of them] --> H[(Held call, waiting for your reply)]
     H -. next run .-> A
-    R[Write the recap Doc and create the Jira tickets] --> SN[Add the meeting to the shared meeting notes, never twice]
+    R[Write the recap Doc and create the Jira tickets] --> SN[Add the meeting to the Master Engagement Doc, never twice]
     SN --> P[Post recap ready in your self-DM, with any links still needed]
     P --> LG[Log the run in recap-check-log.md]
 ```

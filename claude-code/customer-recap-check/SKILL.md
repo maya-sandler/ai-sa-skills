@@ -1,6 +1,6 @@
 ---
 name: customer-recap-check
-description: Automatically recap LaunchDarkly customer calls. On a schedule, finds Gong's "call recording is ready" emails (Gmail through Glean) for calls with the SA's active customers, waits for each call's full transcript in Glean, skips calls already recapped, runs customer-meeting-recap unattended, adds each finished recap to the customer's shared meeting notes (customer-shared-notes), and reports in the SA's Slack self-DM, asking there for any missing links. Also sets the check up and changes its settings. Use when a scheduled task runs the recap check, or when the user (a LaunchDarkly Solutions Architect) asks to set up, run, pause, switch to live, or check on automatic meeting recaps.
+description: Automatically recap LaunchDarkly customer calls. On a schedule, finds Gong's "call recording is ready" emails (Gmail through Glean) for calls with the SA's active customers, waits for each call's full transcript in Glean, skips calls already recapped, runs customer-meeting-recap unattended, adds each finished recap to the customer's Master Engagement Doc (customer-shared-notes), and reports in the SA's Slack self-DM, asking there for any missing links. Also sets the check up and changes its settings. Use when a scheduled task runs the recap check, or when the user (a LaunchDarkly Solutions Architect) asks to set up, run, pause, switch to live, or check on automatic meeting recaps.
 ---
 
 # Customer Recap Check (Claude Code)
@@ -8,7 +8,7 @@ description: Automatically recap LaunchDarkly customer calls. On a schedule, fin
 This skill turns every call with an **active customer** into a recap and Jira tickets, with no
 prompt from the SA. A Claude Code scheduled task runs it every hour on the SA's Mac. Each run
 looks for new **Gong "call is ready" emails** in the SA's Gmail, recaps those calls with
-`customer-meeting-recap`, adds each finished recap to the customer-facing meeting notes with
+`customer-meeting-recap`, adds each finished recap to the customer-facing Master Engagement Doc with
 `customer-shared-notes`, and tells the SA in their **Slack self-DM**, asking there when links
 are missing.
 
@@ -232,7 +232,7 @@ Never fall back to the email's Key points, Gong's call summary or Glean search s
 **8. Recap it.**
 
 - **Dry run:** don't run the recap skill. Post one Slack message per call ("Dry run: would recap
-  *<title>* with <Customer> and add it to the shared meeting notes; links missing: <the links
+  *<title>* with <Customer> and add it to the Master Engagement Doc; links missing: <the links
   from the list above that `CLAUDE.md` doesn't have, or none>"), and `calls mark --status
   dry-run`.
 - **Live:** run the `customer-meeting-recap` skill with a prompt starting `UNATTENDED RUN`:
@@ -250,7 +250,7 @@ Never fall back to the email's Key points, Gong's call summary or Glean search s
 
 | Status | Post to Slack | Then |
 |---|---|---|
-| `done` | First run the shared meeting notes (below). Then "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file, and the shared notes line. If `missing` isn't empty, add "Links still needed: <links>. Reply in this thread to add them" | `calls mark --status done --missing <missing, or none> --slack-ts <ts>` (for a thread reply, keep the first post's `ts`); audit lines for the recap Doc and each ticket |
+| `done` | First update the Master Engagement Doc (below). Then "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file, and the Master Engagement Doc line. If `missing` isn't empty, add "Links still needed: <links>. Reply in this thread to add them" | `calls mark --status done --missing <missing, or none> --slack-ts <ts>` (for a thread reply, keep the first post's `ts`); audit lines for the recap Doc and each ticket |
 | `held` | "*<Customer>* recap waiting: <its question> Reply in this thread." | `calls mark --status held --note <needs, comma-separated> --slack-ts <ts> --reminded <today>` |
 | `waiting` | Nothing | Leave it `waiting` for the next run |
 | `error` | "*<Customer>* recap failed: <error>" | `calls mark --status error --note <error>`; the next run doesn't retry it |
@@ -258,8 +258,8 @@ Never fall back to the email's Key points, Gong's call summary or Glean search s
 Send a Claude notification for every `held` and `error`, and for `done`. Delete the transcript
 file once the call is handled.
 
-**Shared meeting notes.** Every time a recap ends `done` (a first run, or a resumed held call),
-add it to the customer-facing `<Customer> & LaunchDarkly – Meeting Notes` Doc. Run the
+**Master Engagement Doc.** Every time a recap ends `done` (a first run, or a resumed held call),
+add it to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`. Run the
 `customer-shared-notes` skill once, only after the recap Doc is saved, with this prompt:
 
 ```text
@@ -273,9 +273,9 @@ Read the `SHARED_NOTES_RESULT` block it ends with:
 
 | Status | Add to the "recap ready" post | Log |
 |---|---|---|
-| `added` | "Added to the shared meeting notes: <doc link>" | An audit line naming the shared Doc and the meeting added |
+| `added` | "Added to the Master Engagement Doc: <doc link>" | An audit line naming the shared Doc and the meeting added |
 | `already_there` | Nothing | An activity line |
-| `held` or `error` | "Shared meeting notes not updated: <reason>" | An activity line with the reason |
+| `held` or `error` | "Master Engagement Doc not updated: <reason>" | An activity line with the reason |
 
 Don't retry a `held` or `error` on a later run. Never run it in dry-run mode, or for a recap
 that isn't `done`.
