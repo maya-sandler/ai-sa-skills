@@ -225,14 +225,16 @@ from any device. **Every customer skill reads it first and works only on custome
 Active** (any case), so old customers are left alone. Put in it whatever you want the skills to
 know:
 
-| Customer | Documentation name | Folder link | Slack channels | Gong account | Status |
-| --- | --- | --- | --- | --- | --- |
-| Acme | Acme Corp | `<Drive folder link>` | `<Slack channel links>` | Acme Corporation | Active |
+| Customer | Documentation name | Folder link | Salesforce opportunity | Slack channels | Gong account | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Acme | Acme Corp | `<Drive folder link>` | `<Salesforce opportunity link>` | `<Slack channel links>` | Acme Corporation | Active |
 
 - **Customer:** your name for it. Its local folder is that name in lowercase, with hyphens.
 - **Documentation name:** the name used in every Doc, e.g. `Acme Corp – Meeting Recap –
   2026-10-26`. Blank: the Customer value is used.
 - **Folder link:** the Drive folder where the customer's recaps and prep briefs live.
+- **Salesforce opportunity:** the link to the opportunity you're working on now. It tells the
+  skills which opportunity in `CLAUDE.md` a call or brief belongs to.
 - **Slack channels:** the customer's channels and chats (shared channel, internal account channel,
   group DMs). The skills read them for context and never name them in a Doc or ticket.
 - **Gong account:** the account name Gong shows, so the recap check finds the customer's calls.

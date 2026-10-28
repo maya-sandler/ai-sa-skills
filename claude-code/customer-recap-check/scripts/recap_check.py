@@ -78,11 +78,12 @@ also live in each customer's CLAUDE.md for the skills' reference.
 - **Documentation name:** the customer's name as written in Doc names. Leave blank if it's the
   same as the Customer value.
 - **Folder link:** in Google Drive.
+- **Salesforce opportunity:** the link to the opportunity you're working on now.
 - **Status:** Active or Not active. Only Active customers are worked on.
 
-| Customer | Documentation name | Folder link | Slack channels | Gong account | Status |
-| --- | --- | --- | --- | --- | --- |
-| Acme | Acme Corp | (Drive folder link) | (Slack channel links) | Acme Corporation | Example |
+| Customer | Documentation name | Folder link | Salesforce opportunity | Slack channels | Gong account | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Acme | Acme Corp | (Drive folder link) | (Salesforce opportunity link) | (Slack channel links) | Acme Corporation | Example |
 """
 
 
@@ -189,12 +190,14 @@ def customer_row(row):
     folder = get("folder link", "folder")
     folder_url = (URL.findall(folder) or [""])[0]
     folder_id = re.search(r"/folders/([A-Za-z0-9_-]+)", folder_url)
+    salesforce = get("salesforce opportunity", "salesforce")
     slack = get("slack channels", "slack")
     return {
         "customer": customer,
         "documentation_name": get("documentation name") or customer,
         "folder_link": folder_url,
         "folder_id": folder_id.group(1) if folder_id else "",
+        "salesforce_link": (URL.findall(salesforce) or [""])[0],
         "local_folder": slug(customer),
         "slack_channels": "none" if slack.strip().lower() == "none" else URL.findall(slack),
         "gong_account": get("gong account"),
@@ -254,6 +257,7 @@ def sync_block(row):
         "",
         "- Documentation name: %s" % row["documentation_name"],
         "- Drive folder: %s" % (row["folder_link"] or "not given"),
+        "- Salesforce opportunity: %s" % (row["salesforce_link"] or "not given"),
         "- Slack channels: %s" % slack,
         "- Gong account: %s" % (row["gong_account"] or "not given"),
         "- Status: %s" % (row["status"] or "not given"),
