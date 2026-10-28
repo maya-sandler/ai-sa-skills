@@ -317,7 +317,8 @@ git clone <this repo's URL>
 ```
 
 **2. Set your Jira project key, once, before the first install.** It's the project your customer
-tasks go to: the letters in ticket keys like `ABC-123`. Use your own project, so your tickets
+tasks go to: the letters before the dash in ticket keys (`ABC` in `ABC-123`). It's the project's
+short name, not a secret or an API key, and it's separate from your API token. Use your own project, so your tickets
 don't land in someone else's. The installer doesn't ask for it; it stops and reminds you if it
 isn't set. Replace `ABC` with your key:
 

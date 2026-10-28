@@ -30,9 +30,13 @@ saved() { [ -f "$CONFIG" ] && python3 -I -c 'import json,sys; print(json.load(op
 # Your Jira project key is set by hand before the first install, never asked here.
 jira_project="$(saved jira_project)"
 if ! printf '%s' "$jira_project" | grep -Eq '^[A-Z][A-Z0-9_]{1,9}$'; then
-  echo "Set your Jira project key first (the letters in ticket keys like ABC-123):"
+  echo "Before running this installer, please set your Jira project key first by running this"
+  echo "command in bash (replace ABC with your project's key):"
   echo "  python3 claude-code/customer-recap-check/scripts/recap_check.py config set jira_project ABC"
-  echo "See README.md, Install, step 1. Nothing changed."
+  echo "The project key is not a secret or an API key. It's the project's short name, the letters"
+  echo "before the dash in your ticket keys (ABC in ABC-123). Your API token in"
+  echo "~/.config/acli/token.txt is separate, and this installer doesn't read it."
+  echo "See README.md, Install, step 2. Nothing changed."
   exit 1
 fi
 
