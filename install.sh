@@ -81,6 +81,7 @@ if [ -z "$prev_site" ] && command -v acli >/dev/null 2>&1; then
   prev_site="$( (acli jira auth status 2>/dev/null || true) | sed -n 's/^ *Site: *//p' | head -1)"
 fi
 case "$prev_site" in *.*) ;; *) prev_site="" ;; esac
+prev_site="${prev_site:-launchdarkly.atlassian.net}"
 echo
 while :; do
   if [ -n "$prev_site" ]; then
@@ -117,15 +118,21 @@ history_drive_folder="$history"
 
 # 3c. Your own Drive folder for the Active Customers Doc, which every customer skill reads.
 prev_sa_folder="$(saved sa_drive_folder)"
+printf '%s' "$prev_sa_folder" | grep -Eq '^[A-Za-z0-9_-]{10,}$' || prev_sa_folder=""  # ignore a bad saved answer
 echo
-echo "I'll create your Active Customers Doc (the customers the skills work on, with their links)"
-echo "in your own Google Drive folder. You can also do this later by asking Claude to set up the"
-echo "recap check."
-[ -n "$prev_sa_folder" ] && echo "  (now: folder $prev_sa_folder)"
+echo "Your own Google Drive folder. I'll create your Active Customers Doc there: the list of"
+echo "customers the skills work on, with their links."
+if [ -n "$prev_sa_folder" ]; then
+  echo "  Saved folder: https://drive.google.com/drive/folders/$prev_sa_folder"
+  prompt="Press Enter to keep the saved folder, paste another folder link, or type pass to skip for now: "
+else
+  prompt="Paste your folder link, or type pass to skip for now (ask Claude to set up the recap check later): "
+fi
 while :; do
-  read -r -p "Paste the folder link, press Enter to keep what's there, or type pass to skip: " sa_folder
+  read -r -p "$prompt" sa_folder
   case "$sa_folder" in
-    ""|y|Y|yes|YES|Yes) sa_folder="$prev_sa_folder"; break ;;
+    ""|y|Y|yes|YES|Yes) [ -n "$prev_sa_folder" ] || { echo "  Paste a folder link, or type pass."; continue; }
+      sa_folder="$prev_sa_folder"; break ;;
     pass|PASS|Pass) sa_folder=""; break ;;
     https://drive.google.com/*/folders/*)
       sa_folder="${sa_folder%%\?*}"; sa_folder="${sa_folder##*/folders/}"; sa_folder="${sa_folder%%/*}"; break ;;
