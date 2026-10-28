@@ -362,9 +362,58 @@ It never asks for, reads or prints a token or secret.
 **Then sign in, once (about 25 minutes):** follow Parts A and B of
 [ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md):
 
-- **Part A, Jira:** install `acli`, create an API token, save it to a private file, sign in.
+- **Part A, Jira:** install `acli`, create an API token, save it to a private file, sign in
+  (short version below).
 - **Part B, Google Drive:** create a Google Cloud project and OAuth client, save it with the
   helper's `setup-client` command (the secret stays hidden as you paste), sign in in the browser.
+
+#### Jira sign-in, short version
+
+**1. Install `acli`** (the Atlassian CLI), one command at a time in your terminal:
+
+```bash
+brew tap atlassian/homebrew-acli
+```
+
+```bash
+brew trust atlassian/acli
+```
+
+```bash
+brew install acli
+```
+
+**2. Create an API token** in your Atlassian account's **Security** settings:
+https://id.atlassian.com/manage-profile/security → **Create and manage API tokens** →
+**Create API token**. Pick the plain one, not "with scopes": it gets exactly your own Jira
+permissions, and the skills need nothing more than you already have (view and create issues
+in your own project and comment on them). Name it e.g. `acli-claude-code`, pick an expiry date,
+then **Copy**. It's shown only once.
+
+**3. Save it to a private file,** `~/.config/acli/token.txt`, right after clicking Copy:
+
+```bash
+mkdir -p ~/.config/acli && pbpaste > ~/.config/acli/token.txt && chmod 600 ~/.config/acli/token.txt
+```
+
+The file holds only the token, on one line, no quotes or label. It looks like this (made up,
+and much shorter than a real one, which is about 190 characters):
+
+```text
+ATATT3xFfGF0Ex4mPleT0kenN0tReal1234567890abcdef=A1B2C3D4
+```
+
+Check its size without printing it: `wc -c < ~/.config/acli/token.txt` should say about 190.
+Never paste the token into a chat or a repo file.
+
+**4. Sign in,** with your own site and email:
+
+```bash
+acli jira auth login --site yourcompany.atlassian.net --email you@yourcompany.com --token < ~/.config/acli/token.txt
+```
+
+You should see `✓ Authentication successful`. The full steps, and what to do if one fails, are in
+[ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md), Part A.
 
 Run `./install.sh` again afterwards: it fills in your Jira site for you, shows that both
 sign-ins are done, and creates your Active Customers Doc. Open it from the link it prints and add
