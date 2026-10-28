@@ -98,21 +98,26 @@ while :; do
 done
 jira_site="$site"
 
-# 3b. Optional: the team's base Drive folder for customer projects (for engagement history).
+# 3b. The team's shared base Drive folder for customer projects (required).
 prev_history="$(saved history_drive_folder)"
-case "$prev_history" in https://*|none) ;; *) prev_history="" ;; esac
+case "$prev_history" in https://drive.google.com/*) ;; *) prev_history="" ;; esac
 echo
-echo "Optional: your team's base Google Drive folder for customer projects. The prep skill"
-echo "searches it (through Glean) for earlier engagements with a customer."
-[ -n "$prev_history" ] && [ "$prev_history" != none ] && echo "  (now: $prev_history)"
+echo "Your team's shared base Google Drive folder for customer projects. Everyone on the team"
+echo "uses the same one; ask your manager for the link if you don't have it. The skills search"
+echo "it for earlier engagements with a customer, so it's required."
+if [ -n "$prev_history" ]; then
+  echo "  Saved folder: $prev_history"
+  prompt="Press Enter to keep the saved folder, or paste the team folder link: "
+else
+  prompt="Paste the team folder link: "
+fi
 while :; do
-  read -r -p "Paste the folder link, press Enter to keep what's there, or type pass to skip: " history
+  read -r -p "$prompt" history
   case "$history" in
-    ""|y|Y|yes|YES|Yes) history="${prev_history:-none}"; break ;;
-    pass|PASS|Pass) history=none; break ;;
-    https://drive.google.com/*) history="${history%%\?*}"; break ;;
+    ""|y|Y|yes|YES|Yes) [ -n "$prev_history" ] && { history="$prev_history"; break; } ;;
+    https://drive.google.com/*/folders/*) history="${history%%\?*}"; break ;;
   esac
-  echo "  Paste a Google Drive folder link (https://drive.google.com/drive/folders/...), or type pass."
+  echo "  Paste the Google Drive folder link (https://drive.google.com/drive/folders/...)."
 done
 history_drive_folder="$history"
 

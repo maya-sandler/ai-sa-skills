@@ -78,8 +78,8 @@ Each question suggests a value: press Enter (or type `y`) to keep it.
    a `CLAUDE.md` of links.
 3. **Your Jira site**, e.g. `yourcompany.atlassian.net`. If `acli` is already signed in, it asks
    you to confirm that site.
-4. **Optional: your team's base Drive folder** for customer projects. Paste its link, or type
-   `pass`.
+4. **Your team's shared base Drive folder** for customer projects (required). Everyone uses the
+   same one; paste its link.
 5. **Your own Drive folder for the Active Customers Doc.** Paste its link, or type `pass`.
 
 It then shows "Please confirm your selections"; Enter installs, `n` stops.

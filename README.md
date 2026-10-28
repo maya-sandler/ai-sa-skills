@@ -345,7 +345,7 @@ It asks these questions. Each one suggests a value: press **Enter** (or type `y`
 | 1 | Where should the skills be installed? | **Enter** for `~/.claude/skills` (recommended: available in every Claude Code session), or `2` for one project's `.claude/skills` | Claude Code loads skills from these folders |
 | 2 | What is the local path you want your customer CLAUDE.md files saved in? | **Enter** to keep it, or type another folder path starting with `~/` or `/`, e.g. `~/clients` | Where each customer's `CLAUDE.md` of links goes. Recaps and briefs are saved to Google Drive, not here |
 | 3 | Confirm your Jira site is `launchdarkly.atlassian.net` | **Enter** to confirm, or type another site | For ticket links |
-| 4 | Optional: your team's base Google Drive folder for customer projects | Paste the folder link, or type `pass` to skip | The prep skill searches it for earlier engagements with an existing customer. If you skip it, the skill asks for folders when it needs them |
+| 4 | Your team's shared base Google Drive folder for customer projects (required) | Paste the team folder link, or **Enter** to keep a saved one. Everyone uses the same folder; ask your manager if you don't have it | The skills search it for earlier engagements with a customer |
 | 5 | Your own Google Drive folder, where I'll create your Active Customers Doc | Paste the folder link, **Enter** to keep a saved one, or type `pass` to skip for now | Every customer skill reads the Doc. If you skip it, setting up the recap check asks for the folder |
 
 Then it shows **"Please confirm your selections"**, with every answer and your Jira project key.
