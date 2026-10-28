@@ -142,11 +142,11 @@ at the first check of the next weekday.
    each recap records, so a call is never recapped twice.
 4. **Waits for the full transcript** in Glean, and writes the recap only from it.
 5. **Runs `customer-meeting-recap` unattended:** it never stops to wait. Only a missing Drive
-   folder (or not knowing which opportunity it is) holds the call, since there's nowhere to save
-   the recap: it asks you in Slack, and reminds you at most once a day. Any other missing link
-   (Salesforce, Vitalstatistix, session plan, Slack channels) doesn't hold it: the recap and
-   tickets are made with `Not found` for it, and the "recap ready" post asks you for it. When you
-   reply, the link is saved for next time and filled in on the recap Doc.
+   folder holds the call, since there's nowhere to save the recap: it asks you in Slack, and
+   reminds you at most once a day. Anything else missing (which opportunity it is, Salesforce,
+   Vitalstatistix, session plan, Slack channels) doesn't hold it: the recap and tickets are made
+   with `Not found` for it, and the "recap ready" post asks you for it. When you reply, the link
+   is saved for next time and filled in on the recap Doc.
 6. **Updates the Master Engagement Doc:** after each finished recap, runs `customer-shared-notes`
    to add the meeting to the opportunity's customer-facing `<Customer> & LaunchDarkly – Meeting
    Notes` Doc. It runs only once the recap is saved, never in dry-run mode, and never adds a
@@ -176,7 +176,7 @@ flowchart TD
     D -- Yes --> X2([Skip it])
     D -- No --> TR{Full transcript in Glean?}
     TR -- Not yet --> W([Wait for the next run])
-    TR -- Yes --> DF{Drive folder and opportunity known?}
+    TR -- Yes --> DF{Drive folder known?}
     DF -- Yes --> R
     DF -- No --> Q2[Ask in your Slack self-DM for all missing links] --> H[(Held call, waiting for your reply)]
     H -. next run .-> RP{Did you reply to the self-DM in thread?}

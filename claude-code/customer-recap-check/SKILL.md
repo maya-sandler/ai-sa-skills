@@ -134,12 +134,12 @@ Recap at most **5 calls per run**; leave the rest waiting for the next run.
 **Missing links.** A recap needs the opportunity's links from the customer's `CLAUDE.md`: Drive
 folder, Salesforce opportunity, Vitalstatistix, session plan, and the customer's Slack channels
 and chats. When any are missing, the check asks the SA **once**, in one Slack post listing all
-of them. Only a missing Drive folder or an unclear opportunity holds the recap:
+of them. Only a missing Drive folder holds the recap:
 
 | Missing | The recap | When the SA replies in the thread |
 |---|---|---|
-| **Drive folder**, or which opportunity it is | Held (`held`): no Doc can be made. Remind in the thread at most once a day | The recap and tickets are made |
-| Only other links (Salesforce, Vitalstatistix, session plan, Slack channels) | Made right away (`done`), with `Not found` for them. The "recap ready" post asks for them | Saved to `CLAUDE.md`, and filled in on the recap Doc's Customer links (Slack channels go only in `CLAUDE.md`) |
+| **Drive folder** | Held (`held`): no Doc can be made. Remind in the thread at most once a day | The recap and tickets are made |
+| Only other links (which opportunity it is, Salesforce, Vitalstatistix, session plan, Slack channels) | Made right away (`done`), with `Not found` for them. The "recap ready" post asks for them | Saved to `CLAUDE.md`, and filled in on the recap Doc's Customer links (Slack channels go only in `CLAUDE.md`) |
 
 Never work out a missing link yourself, and never search Slack or Glean for the customer's
 channels. Only the SA's answer counts.
@@ -161,9 +161,9 @@ after the last follow-up the check posted in that thread).
 |---|---|---|
 | `held`, any note | Links, an opportunity name, or "skip" | In live mode, read the transcript (step 7, "Transcript") and run `customer-meeting-recap` with a prompt starting `UNATTENDED RUN, RESUME`, giving the call details as in step 8 and the SA's answer word for word. Handle its `RECAP_RESULT` as in step 9, posting in the same thread |
 | `held`, any note | "Not a customer call" or "ignore" | `calls mark --status skipped`, and confirm in the thread |
-| `held` by a recap the SA ran by hand, its note lists only links other than the Drive folder and opportunity | None | In live mode, run the recap with a prompt starting `UNATTENDED RUN, NO ANSWER` (call details as in step 8). It writes `Not found` for the missing links. Handle its `RECAP_RESULT` as in step 9, in the same thread: the "recap ready" post lists the links still needed |
-| `held`, its note has `drive_folder`, `opportunity`, `new_opportunity` or `unclear-customer` (older runs wrote `needs-drive-folder`) | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
-| `done` with `missing` | Links, or "skip" / "none" for some | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section; a link that doesn't exist is `none`). Then, if the call has a `recap` and the reply gave a Salesforce, Vitalstatistix or session plan link, update that Doc: find its exact name with `list --folder <Drive folder> --contains "Meeting Recap"` (the entry with that ID), `read --id <recap>` into the scratchpad, replace those `Not found` lines in Customer links, and `save` under that name. Never add Slack channels to the Doc. Then `calls mark --missing <what's still missing, or none>` (a skipped link counts as no longer missing), and confirm in the thread with the recap link. Audit line for the Doc |
+| `held`, its note doesn't have `drive_folder` (a recap the SA ran by hand, or an older run) | None | In live mode, run the recap with a prompt starting `UNATTENDED RUN, NO ANSWER` (call details as in step 8). It writes `Not found` for the missing links. Handle its `RECAP_RESULT` as in step 9, in the same thread: the "recap ready" post lists the links still needed |
+| `held`, its note has `drive_folder` or `unclear-customer` (older runs wrote `needs-drive-folder`) | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
+| `done` with `missing` | Links, or "skip" / "none" for some | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section; a link that doesn't exist is `none`). An opportunity name in the reply picks that entry; a new one gets a new entry with that name, holding the reply's links and the recap's Drive folder. Then, if the call has a `recap` and the reply gave the opportunity or a Salesforce, Vitalstatistix or session plan link, update that Doc: find its exact name with `list --folder <Drive folder> --contains "Meeting Recap"` (the entry with that ID), `read --id <recap>` into the scratchpad, replace the `Not found` Opportunity line and Customer links with that opportunity's links from `CLAUDE.md`, and `save` under that name. Never add Slack channels to the Doc. Then `calls mark --missing <what's still missing, or none>` (a skipped link counts as no longer missing), and confirm in the thread with the recap link. Audit line for the Doc |
 | `done` with `missing` | None | Nothing |
 
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. It returns only rows whose
@@ -267,7 +267,7 @@ add it to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`. R
 ```text
 UNATTENDED RUN
 Customer folder: <customers_dir>/<Folder>
-Opportunity: <RECAP_RESULT opportunity>
+Opportunity: <RECAP_RESULT opportunity, or Not found>
 Recap Doc ID: <RECAP_RESULT recap.id, or the ID in recap.link after /d/>
 ```
 

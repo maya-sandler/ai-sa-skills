@@ -61,11 +61,15 @@ everything below applies, and it overrides any step that says to ask the SA:
 
   | Prompt starts with | Links still missing after Step 1.3 | What to do |
   |---|---|---|
-  | `UNATTENDED RUN` | The Drive folder, or which opportunity / a new opportunity (with or without other links) | Stop before writing anything: there's nowhere to save the recap. Return `held` with every missing link in `needs`, and one `question` asking for all of them |
-  | `UNATTENDED RUN` | Only Salesforce, Vitalstatistix, session plan or Slack channels | Don't wait for them. Write `Not found` for them, and finish. Return `done` with `missing` naming them, and one `question` asking for all of them |
-  | `UNATTENDED RUN, RESUME` (gives the SA's answer) | Whatever the answer didn't give | Save the answer to `CLAUDE.md` (Step 1.5). Still no Drive folder, or still unclear which opportunity: return `held` again. Otherwise write `Not found` for the rest, and finish. Return `done` with `missing` naming them |
+  | `UNATTENDED RUN` | The Drive folder (with or without other links) | Stop before writing anything: there's nowhere to save the recap. Return `held` with every missing link in `needs`, and one `question` asking for all of them |
+  | `UNATTENDED RUN` | Only Salesforce, Vitalstatistix, session plan, Slack channels, or which opportunity / a new opportunity | Don't wait for them. Write `Not found` for them, and finish. Return `done` with `missing` naming them, and one `question` asking for all of them |
+  | `UNATTENDED RUN, RESUME` (gives the SA's answer) | Whatever the answer didn't give | Save the answer to `CLAUDE.md` (Step 1.5). Still no Drive folder: return `held` again. Otherwise write `Not found` for the rest, and finish. Return `done` with `missing` naming them |
   | `UNATTENDED RUN, NO ANSWER` (a call held by a recap the SA ran by hand) | Salesforce, Vitalstatistix, session plan, Slack channels | Write `Not found` for them, and finish. Return `done` with `missing` naming them |
 
+- **Which opportunity isn't clear, or it looks new:** don't wait, and add no entry to
+  `CLAUDE.md`. Write the recap in the Drive folder you have, with `Opportunity: Not found`, and
+  `Not found` for the Salesforce, Vitalstatistix and session plan links: never take them from
+  another opportunity's entry. Put `opportunity` in `missing`.
 - **Never take a link from a Glean or Slack search,** not even as a suggestion. Only the prompt,
   the customer's `CLAUDE.md` and the opportunity's Drive folder count.
 - **Tickets:** create them as usual, even when a link is `Not found`. A held run stops before
@@ -80,11 +84,11 @@ End every unattended run with exactly one block like this:
 RECAP_RESULT
 {"status": "done" | "held" | "waiting" | "error",
  "gong_call_id": "<id>",
- "opportunity": "<opportunity name from CLAUDE.md>",
+ "opportunity": "<opportunity name from CLAUDE.md, or Not found>",
  "recap": {"name": "<Doc name>", "id": "<Doc ID>", "link": "<webViewLink>"} | null,
  "tickets": [{"key": "KEY-123", "title": "Alex: …", "link": "<url>"}],
  "needs": ["drive_folder" | "opportunity" | "new_opportunity" | "salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],
- "missing": ["salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],
+ "missing": ["opportunity" | "salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],
  "question": "<one message for the SA listing every missing link, if held, or done with missing>",
  "error": "<what failed, if error>"}
 ```
@@ -121,7 +125,7 @@ sa_drive_folder`). The command prints the row, or `"customer": null` if it isn't
   Drive folder of the opportunity being worked on: the `CLAUDE.md` entry that has this folder.
   If no entry has it, and `CLAUDE.md` has no opportunity or exactly one without a Drive folder,
   write it into that entry (or a new one). If other entries have other folders, ask which
-  opportunity it is (unattended: return `held` with `needs: ["opportunity"]`).
+  opportunity it is (unattended: don't wait; see "Unattended mode").
 - **Slack channels:** the channels and chats to read for context. Copy them into `CLAUDE.md`'s
   **Slack** section; `none` means there are none. They're never named in a Doc or ticket.
 - **Local folder** (`local_folder`): the customer's folder is `{{CUSTOMERS_DIR}}/<local_folder>/`.
