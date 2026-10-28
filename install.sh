@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Install the SA customer skills for Claude Code.
 #
-# Asks where the skills and your customer folders should live and which Jira project to use,
+# Asks where the skills and your customer folders should live and which Jira site to use,
 # fills those into the skills, installs them, and sets up the Drive helper's Python libraries. Safe to run again:
 # it remembers your answers (in ~/.config/sa-skills/config.json) and offers them as defaults.
+# Your Jira project key is set once by hand before the first install (see README.md, Install).
 #
 # It never asks for, reads or prints a token or secret. Signing in to Jira and Google is
 # done separately; see ACCESS-AND-SETUP.md.
@@ -20,9 +21,20 @@ SKILLS=(customer-meeting-recap customer-session-prep customer-engagement-prep cu
 # Show paths under your home folder as ~/..., the way the skills use them.
 tilde() { case "$1" in "$HOME"*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' "$1" ;; esac; }
 expand() { case "$1" in "~") printf '%s' "$HOME" ;; "~/"*) printf '%s/%s' "$HOME" "${1#"~/"}" ;; *) printf '%s' "$1" ;; esac; }
+# Enter, "y" or "yes" keeps the suggested value.
+keep() { case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in ""|y|yes) return 0 ;; *) return 1 ;; esac; }
 saved() { [ -f "$CONFIG" ] && python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2],""))' "$CONFIG" "$1" || true; }
 
 [ -d "$SRC" ] || { echo "Can't find $SRC. Run this script from inside the ai-sa-skills folder."; exit 1; }
+
+# Your Jira project key is set by hand before the first install, never asked here.
+jira_project="$(saved jira_project)"
+if ! printf '%s' "$jira_project" | grep -Eq '^[A-Z][A-Z0-9_]{1,9}$'; then
+  echo "Set your Jira project key first (the letters in ticket keys like ABC-123):"
+  echo "  python3 claude-code/customer-recap-check/scripts/recap_check.py config set jira_project ABC"
+  echo "See README.md, Install, step 1. Nothing changed."
+  exit 1
+fi
 
 echo "SA customer skills installer"
 echo
@@ -33,7 +45,7 @@ echo "Where should the skills be installed?"
 echo "  1) ~/.claude/skills: available in every Claude Code session (recommended)"
 echo "  2) One project only: <project>/.claude/skills"
 [ -n "$prev_skills" ] && echo "  (last time: $prev_skills)"
-read -r -p "Choose 1 or 2 [1]: " choice
+read -r -p "Type 1 or 2, or press Enter for 1: " choice
 if [ "${choice:-1}" = "2" ]; then
   read -r -p "Project folder (e.g. ~/work/sa-project): " project
   [ -n "$project" ] || { echo "No folder given; stopping."; exit 1; }
@@ -44,12 +56,18 @@ fi
 
 # 2. Where the customer folders go.
 prev_customers="$(saved customers_dir)"
+case "$prev_customers" in "~"*|/*) ;; *) prev_customers="" ;; esac  # ignore a bad saved answer
 default_customers="${prev_customers:-~/work/customers}"
 echo
-echo "Where should your customer folders live? Each customer gets one folder with a CLAUDE.md"
-echo "of links. Recaps and briefs themselves are saved to Google Drive, not here."
-read -r -p "Customer folders [$default_customers]: " customers
-customers_dir="$(expand "${customers:-$default_customers}")"
+echo "Your customer folders will be in $default_customers. Each customer gets one small folder"
+echo "there with a CLAUDE.md of links; recaps and briefs are saved to Google Drive, not here."
+while :; do
+  read -r -p "Press Enter to keep $default_customers, or type another folder (e.g. ~/customers): " customers
+  if keep "$customers"; then customers="$default_customers"; break; fi
+  case "$customers" in "~"*|/*) break ;; esac
+  echo "  That isn't a folder path: start it with ~/ or /."
+done
+customers_dir="$(expand "$customers")"
 
 # 3. Your Jira site and project (where the recap skill files your tickets).
 prev_site="$(saved jira_site)"
@@ -57,46 +75,70 @@ if [ -z "$prev_site" ] && command -v acli >/dev/null 2>&1; then
   # acli exits non-zero when it isn't signed in yet; that must not stop the installer.
   prev_site="$( (acli jira auth status 2>/dev/null || true) | sed -n 's/^ *Site: *//p' | head -1)"
 fi
+case "$prev_site" in *.*) ;; *) prev_site="" ;; esac
 echo
-echo "Your Jira site, e.g. yourcompany.atlassian.net"
-read -r -p "Jira site [${prev_site:-none}]: " site
-jira_site="${site:-$prev_site}"
-jira_site="${jira_site#https://}"; jira_site="${jira_site%%/*}"
-[ -n "$jira_site" ] || { echo "A Jira site is needed; stopping."; exit 1; }
-prev_project="$(saved jira_project)"
-echo "The key of your own Jira project for customer tasks (the letters in ticket keys like ABC-123)"
-read -r -p "Jira project key [${prev_project:-none}]: " project_key
-jira_project="$(printf '%s' "${project_key:-$prev_project}" | tr '[:lower:]' '[:upper:]')"
-[ -n "$jira_project" ] || { echo "A Jira project key is needed; stopping."; exit 1; }
+while :; do
+  if [ -n "$prev_site" ]; then
+    echo "Confirm your Jira site is $prev_site."
+    read -r -p "Press Enter to confirm, or type another site (e.g. yourcompany.atlassian.net): " site
+    if keep "$site"; then site="$prev_site"; fi
+  else
+    read -r -p "Type your Jira site (e.g. yourcompany.atlassian.net): " site
+  fi
+  site="${site#https://}"; site="${site%%/*}"
+  case "$site" in *.*) break ;; esac
+  echo "  That isn't a Jira site: it looks like yourcompany.atlassian.net."
+  prev_site=""
+done
+jira_site="$site"
 
 # 3b. Optional: the team's base Drive folder for customer projects (for engagement history).
 prev_history="$(saved history_drive_folder)"
+case "$prev_history" in https://*|none) ;; *) prev_history="" ;; esac
 echo
 echo "Optional: your team's base Google Drive folder for customer projects. The prep skill"
-echo "searches it (through Glean) for earlier engagements with a customer. Press Enter to skip."
-read -r -p "Base Drive folder URL [${prev_history:-none}]: " history
-history_drive_folder="${history:-${prev_history:-none}}"
-history_drive_folder="${history_drive_folder%%\?*}"
+echo "searches it (through Glean) for earlier engagements with a customer."
+[ -n "$prev_history" ] && [ "$prev_history" != none ] && echo "  (now: $prev_history)"
+while :; do
+  read -r -p "Paste the folder link, press Enter to keep what's there, or type pass to skip: " history
+  case "$history" in
+    ""|y|Y|yes|YES|Yes) history="${prev_history:-none}"; break ;;
+    pass|PASS|Pass) history=none; break ;;
+    https://drive.google.com/*) history="${history%%\?*}"; break ;;
+  esac
+  echo "  Paste a Google Drive folder link (https://drive.google.com/drive/folders/...), or type pass."
+done
+history_drive_folder="$history"
 
 # 3c. Your own Drive folder for the Active Customers Doc, which every customer skill reads.
 prev_sa_folder="$(saved sa_drive_folder)"
 echo
-echo "Your own Google Drive folder for the Active Customers Doc: the list of customers the skills"
-echo "work on, with their links. The installer creates the Doc there. Paste the folder link, or"
-echo "press Enter to skip (you can set it later by asking Claude to set up the recap check)."
-read -r -p "Your Drive folder URL [${prev_sa_folder:-none}]: " sa_folder
-sa_folder="${sa_folder%%\?*}"; sa_folder="${sa_folder##*/folders/}"; sa_folder="${sa_folder%%/*}"
-sa_drive_folder="${sa_folder:-$prev_sa_folder}"
+echo "I'll create your Active Customers Doc (the customers the skills work on, with their links)"
+echo "in your own Google Drive folder. You can also do this later by asking Claude to set up the"
+echo "recap check."
+[ -n "$prev_sa_folder" ] && echo "  (now: folder $prev_sa_folder)"
+while :; do
+  read -r -p "Paste the folder link, press Enter to keep what's there, or type pass to skip: " sa_folder
+  case "$sa_folder" in
+    ""|y|Y|yes|YES|Yes) sa_folder="$prev_sa_folder"; break ;;
+    pass|PASS|Pass) sa_folder=""; break ;;
+    https://drive.google.com/*/folders/*)
+      sa_folder="${sa_folder%%\?*}"; sa_folder="${sa_folder##*/folders/}"; sa_folder="${sa_folder%%/*}"; break ;;
+  esac
+  echo "  Paste a Google Drive folder link (https://drive.google.com/drive/folders/...), or type pass."
+done
+sa_drive_folder="$sa_folder"
 
 skills_t="$(tilde "$skills_dir")"
 customers_t="$(tilde "$customers_dir")"
 echo
+echo "Please confirm your selections:"
 echo "Skills:           $skills_t"
 echo "Customer folders: $customers_t"
 echo "Jira:             project $jira_project on $jira_site"
 echo "History folder:   $history_drive_folder"
-echo "Your Drive folder: ${sa_drive_folder:-none}"
-read -r -p "Go ahead? [Y/n]: " ok
+echo "Your Drive folder: ${sa_drive_folder:-none (skipped)}"
+read -r -p "Install with these? Press Enter or type y to go ahead, n to stop: " ok
 case "${ok:-Y}" in [Yy]*) ;; *) echo "Nothing changed."; exit 0 ;; esac
 
 # 4. Remember the answers.

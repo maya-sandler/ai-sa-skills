@@ -240,7 +240,7 @@ know:
 
 Its links are copied into each customer's `CLAUDE.md` for the skills' reference. If the two
 disagree, the Doc wins. A customer that isn't in the Doc, or isn't Active, gets a message
-asking you to mark it Active, and nothing else. `install.sh` creates the Doc (question 6), and
+asking you to mark it Active, and nothing else. `install.sh` creates the Doc (its last question), and
 "set up the recap check" creates it if it's still missing. Without it, the skills work from
 `CLAUDE.md` alone.
 
@@ -302,24 +302,42 @@ has the full details, including what we found blocked.
 
 ### Run the installer
 
+**1. Get the repo.**
+
 ```bash
 git clone <this repo's URL>
 ```
 
+**2. Set your Jira project key, once, before the first install.** It's the project your customer
+tasks go to: the letters in ticket keys like `ABC-123`. Use your own project, so your tickets
+don't land in someone else's. The installer doesn't ask for it; it stops and reminds you if it
+isn't set. Replace `ABC` with your key:
+
 ```bash
-cd ai-sa-skills && ./install.sh
+cd ai-sa-skills && python3 claude-code/customer-recap-check/scripts/recap_check.py config set jira_project ABC
 ```
 
-`install.sh` asks five questions and one optional one, then fills your answers into the skills, installs them, and creates your Active Customers Doc:
+To change it later, run the same command with the new key, then the installer again.
 
-| # | Question | Example answer | Why it's asked |
+**3. Run the installer** from the same folder:
+
+```bash
+./install.sh
+```
+
+It asks these questions. Each one suggests a value: press **Enter** (or type `y`) to keep it.
+
+| # | It asks | What to answer | Why it's asked |
 |---|---|---|---|
-| 1 | Where should the skills be installed? | `1` for `~/.claude/skills` (every session), or `2` for one project's `.claude/skills` | Claude Code loads skills from these folders |
-| 2 | Where should your customer folders live? | `~/work/customers` (default) | Where each customer's `CLAUDE.md` goes |
-| 3 | Your Jira site | `yourcompany.atlassian.net` (offered automatically once `acli` is signed in) | For ticket links |
-| 4 | Your Jira project key | `ABC` | Your tickets go to *your* project, not someone else's |
-| 5 | Optional: your team's base Google Drive folder for customer projects | `https://drive.google.com/drive/folders/<id>`, or Enter to skip | The prep skill searches it for earlier engagements with an existing customer. If you skip it, the skill asks for folders when it needs them |
-| 6 | Your own Google Drive folder for the Active Customers Doc | `https://drive.google.com/drive/folders/<id>` | The installer creates the **Active Customers** Doc there (or finds the one already there). Every customer skill reads it. If you skip it, setting up the recap check asks for it |
+| 1 | Where should the skills be installed? | **Enter** for `~/.claude/skills` (recommended: available in every Claude Code session), or `2` for one project's `.claude/skills` | Claude Code loads skills from these folders |
+| 2 | Your customer folders will be in `~/work/customers` | **Enter** to keep it, or type another folder path starting with `~/` or `/`, e.g. `~/clients` | Where each customer's `CLAUDE.md` of links goes. Recaps and briefs are saved to Google Drive, not here |
+| 3 | Confirm your Jira site is `yourcompany.atlassian.net` | **Enter** to confirm, or type your site. If `acli` isn't signed in yet, it asks you to type it | For ticket links |
+| 4 | Optional: your team's base Google Drive folder for customer projects | Paste the folder link, or type `pass` to skip | The prep skill searches it for earlier engagements with an existing customer. If you skip it, the skill asks for folders when it needs them |
+| 5 | I'll create your Active Customers Doc in your own Google Drive folder | Paste the folder link, or type `pass` to skip | Every customer skill reads the Doc. If you skip it, setting up the recap check asks for the folder |
+
+Then it shows **"Please confirm your selections"**, with every answer and your Jira project key.
+Check them, then press **Enter** to install, or type `n` to stop without changing anything.
+An answer that doesn't fit (a "yes" where a folder or site should be) is asked again, never saved.
 
 It also installs the Drive helper's Python libraries, then shows which sign-ins are still needed
 and the link to your Active Customers Doc. The Doc needs the Google Drive sign-in, so on a first

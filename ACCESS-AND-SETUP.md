@@ -55,23 +55,34 @@ app), not in the chat box.
 
 ### Part 0: Run the installer (about 2 minutes)
 
-Clone this repo anywhere you like, then run its installer from inside it:
+Clone this repo anywhere you like. Before the first install, set your **Jira project key**: the
+project where your customer tasks go (the letters in ticket keys like `ABC-123`). Use your own
+project, so your tickets don't land in someone else's. The installer never asks for it:
 
 ```bash
-cd path/to/ai-sa-skills && ./install.sh
+cd path/to/ai-sa-skills && python3 claude-code/customer-recap-check/scripts/recap_check.py config set jira_project ABC
 ```
 
-It asks four questions:
+Then run the installer from the same folder:
 
-1. **Where to install the skills.** Choose `~/.claude/skills` (recommended), so they work in
-   every Claude Code session, or one project's `.claude/skills` folder.
-2. **Where your customer folders should live.** The default is `~/work/customers`, but any
-   folder works, e.g. `~/clients` or `~/Documents/customers`. Each customer gets one folder
-   there, holding just a `CLAUDE.md` of links.
-3. **Your Jira site**, e.g. `yourcompany.atlassian.net`. If `acli` is already signed in, it's
-   offered as the default.
-4. **Your Jira project key**: the project where your customer tasks go (the letters in ticket
-   keys like `ABC-123`). Use your own project, so your tickets don't land in someone else's.
+```bash
+./install.sh
+```
+
+Each question suggests a value: press Enter (or type `y`) to keep it.
+
+1. **Where to install the skills.** Enter for `~/.claude/skills` (recommended), so they work in
+   every Claude Code session, or `2` for one project's `.claude/skills` folder.
+2. **Your customer folders.** It suggests `~/work/customers`; type another path (starting with
+   `~/` or `/`) to change it, e.g. `~/clients`. Each customer gets one folder there, holding just
+   a `CLAUDE.md` of links.
+3. **Your Jira site**, e.g. `yourcompany.atlassian.net`. If `acli` is already signed in, it asks
+   you to confirm that site.
+4. **Optional: your team's base Drive folder** for customer projects. Paste its link, or type
+   `pass`.
+5. **Your own Drive folder for the Active Customers Doc.** Paste its link, or type `pass`.
+
+It then shows "Please confirm your selections"; Enter installs, `n` stops.
 
 It then fills your answers into the skills, installs them, and installs the Drive helper's
 Python libraries. Your answers are saved in `~/.config/sa-skills/config.json` and offered as
@@ -237,7 +248,7 @@ connected and enabled for Claude Code:
 | **Slack** | Read channel and read thread (your self-DM, and the customer channels you listed), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts to your self-DM |
 
 **D2. Have a Drive folder of your own** for the Active Customers Doc, which every customer skill
-reads. You need edit access to it. Give it to `install.sh` (question 6): once you're signed in to
+reads. You need edit access to it. Give it to `install.sh` (its last question): once you're signed in to
 Google Drive, the installer creates the Doc there and prints its link. Otherwise setting up the
 check creates it.
 
