@@ -174,10 +174,6 @@ What each hourly run does, in live mode:
 ```mermaid
 flowchart TD
     T([Scheduled task: every hour, 9:05 to 21:05 on weekdays]) --> AC[Read your Active Customers Doc]
-    T --> A[Read your replies in the Slack threads of held calls]
-    A -- Links or skip --> R
-    A -- No reply, Drive folder known --> NF[Use Not found for the missing links] --> R
-    A -- No reply, Drive folder missing --> RM[Remind in the thread, once a day]
     AC --> E[Search Gmail for Gong's call-is-ready emails, by each Active row's Gong account]
     E --> C{Exact Gong account match with an Active row?}
     C -- No --> X([Skip silently, never opened again])
@@ -188,7 +184,11 @@ flowchart TD
     TR -- Yes --> L{Links missing?}
     L -- No --> R
     L -- Yes --> Q2[Ask once in Slack for all of them] --> H[(Held call, waiting for your reply)]
-    H -. next run .-> A
+    H -. next run .-> RP{Did you reply in the post's thread in your self-DM?}
+    RP -- Yes, with the links --> R
+    RP -- No --> DF{Is the Drive folder known?}
+    DF -- Yes --> NF[Use Not found for the missing links] --> R
+    DF -- No --> RM[Remind you in the same self-DM thread, once a day] --> H
     R[Write the recap Doc and create the Jira tickets] --> SN[Add the meeting to the Master Engagement Doc, never twice]
     SN --> P[Post recap ready in your self-DM, with any links still needed]
 ```
@@ -196,6 +196,9 @@ flowchart TD
 **Log:** every step is logged as it happens, with its own time, to
 `~/.config/sa-skills/recap-check-log.md` on your Mac (one section per run). The run ends with a
 one-line summary. Nothing is logged to Drive.
+
+**Replying to a held call:** reply in the thread of the post that asked, in your Slack self-DM,
+with the links. Replying "skip" for a link writes `Not found` for it.
 
 **Not in the diagram:** you can still run `/customer-meeting-recap` yourself at any time, for
 example for a call the check skipped. It asks you for missing links in chat and in your self-DM,
