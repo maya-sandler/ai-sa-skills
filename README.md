@@ -276,7 +276,11 @@ this `CLAUDE.md` is kept on your computer.
 
 ### Prerequisites
 
-- **Claude Code**, with the **Glean** connector enabled.
+- **Claude Code**, with the **Glean** and **Slack** connectors switched on. In the Claude
+  desktop app, open the connectors settings and check both are connected and on. Glean reads
+  Gong emails and transcripts, Drive, Jira and Salesforce; Slack reads the customer's channels
+  and posts to your self-DM. Google Calendar isn't needed: the recap check works from Gong's
+  emails.
 - **macOS** with Homebrew and Python 3 (tested on macOS; Linux should work with small changes).
 - **A Jira project of your own** for customer tasks, plus a **Jira API token**.
 - **Edit access to each customer's Google Drive folder**, plus a **Google OAuth client** you
@@ -406,14 +410,66 @@ ATATT3xFfGF0Ex4mPleT0kenN0tReal1234567890abcdef=A1B2C3D4
 Check its size without printing it: `wc -c < ~/.config/acli/token.txt` should say about 190.
 Never paste the token into a chat or a repo file.
 
-**4. Sign in,** with your own site and email:
+**4. Sign `acli` in to Jira.** This uses the token file from step 3, so you never type the token.
+Replace the site and email with yours:
 
 ```bash
 acli jira auth login --site yourcompany.atlassian.net --email you@yourcompany.com --token < ~/.config/acli/token.txt
 ```
 
-You should see `✓ Authentication successful`. The full steps, and what to do if one fails, are in
+You should see `✓ Authentication successful`. `acli` remembers the sign-in, so the skills can create
+and read your tickets from then on; `acli jira auth status` checks it. The full steps, and what to do if one fails, are in
 [ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md), Part A.
+
+#### Google Drive sign-in, short version
+
+The skills save Docs to your Drive with their own small app, which you create once in Google
+Cloud. Do these in order, each in your browser with your work Google account:
+
+**1. Create a project:** https://console.cloud.google.com/projectcreate. Name it e.g.
+`ai-sa-skills-<yourname>`, set **Organization** to your company's (not "No organization"), then
+select it in the project picker at the top.
+
+**2. Turn on the Drive API:** https://console.cloud.google.com/apis/library/drive.googleapis.com →
+**Enable**.
+
+**3. Set up the consent screen:** https://console.cloud.google.com/auth/overview → **Get started**.
+App name `SA skills`, your email as contact, **Audience: Internal** (no Google review needed).
+
+**4. Create the OAuth client:** https://console.cloud.google.com/auth/clients → **Create client** →
+**Desktop app** → **Create**. Keep the dialog open: it shows the **Client ID** (ends in
+`.apps.googleusercontent.com`) and the **Client secret** (starts with `GOCSPX-`).
+
+**5. Save the client** in your terminal. It asks for the ID, then the secret, which stays hidden
+as you paste:
+
+```bash
+~/.local/share/sa-skills/venv/bin/python -W ignore ~/.claude/skills/customer-meeting-recap/scripts/gdrive.py setup-client
+```
+
+It saves them to `~/.config/sa-skills/google/client_secret.json`, readable only by you, and
+prints `{"saved": ".../client_secret.json"}`. The file is Google's standard format. With made-up
+values it looks like this; never paste yours into a chat or a repo file:
+
+```json
+{"installed": {"client_id": "123456789012-abc123def456.apps.googleusercontent.com",
+               "client_secret": "GOCSPX-MadeUpExampleNotReal123456",
+               "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+               "token_uri": "https://oauth2.googleapis.com/token",
+               "redirect_uris": ["http://localhost"]}}
+```
+
+**6. Sign in:**
+
+```bash
+~/.local/share/sa-skills/venv/bin/python -W ignore ~/.claude/skills/customer-meeting-recap/scripts/gdrive.py login
+```
+
+A browser opens: pick your work account and click **Allow**. The only permission it asks for is
+"See, edit, create and delete only the specific Google Drive files you use with this app": it can't
+see the rest of your Drive. The terminal prints `{"signed_in_as": "you@yourcompany.com"}`, and the
+sign-in is saved in `~/.config/sa-skills/google/token.json`. Full steps and fixes:
+[ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md), Part B.
 
 Run `./install.sh` again afterwards: it fills in your Jira site for you, shows that both
 sign-ins are done, and creates your Active Customers Doc. Open it from the link it prints and add
