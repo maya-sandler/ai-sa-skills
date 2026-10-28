@@ -73,7 +73,7 @@ Each question suggests a value: press Enter (or type `y`) to keep it.
 
 1. **Where to install the skills.** Enter for `~/.claude/skills` (recommended), so they work in
    every Claude Code session, or `2` for one project's `.claude/skills` folder.
-2. **Your customer folders.** It suggests `~/work/customers`; type another path (starting with
+2. **The local path for your customer CLAUDE.md files.** It suggests `~/work/customers`; type another path (starting with
    `~/` or `/`) to change it, e.g. `~/clients`. Each customer gets one folder there, holding just
    a `CLAUDE.md` of links.
 3. **Your Jira site**, e.g. `yourcompany.atlassian.net`. If `acli` is already signed in, it asks
