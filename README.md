@@ -184,9 +184,9 @@ flowchart TD
     H -. next run .-> RP{Did you reply to the self-DM in thread?}
     RP -- Yes, with the folder --> R
     RP -- No --> RM[Remind in the self-DM, once a day] --> H
-    R["Write recap Doc & create Jira tickets, “Not found” for other missing links"] --> SN[Add last recap to the “Master Engagement Doc”]
+    R["Write recap doc with “Not found” for missing links & create Jira tickets"] --> SN[Add last recap to the “Master Engagement Doc”]
     SN --> P[Post “Recap ready” in self-DM, asking for any missing links]
-    P -. you reply .-> U[Save the links to CLAUDE.md, fill them in on the recap Doc, add to the Master Engagement Doc if it was waiting for the opportunity]
+    P -. you reply .-> U[Save the links to CLAUDE.md, fill them in on the recap doc]
 ```
 
 **Log:** every step is logged as it happens, with its own time, to
