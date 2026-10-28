@@ -1,23 +1,18 @@
 # ai-sa-skills
 
-Claude Code skills that take the busywork out of running customer engagements as a
-Solutions Architect (SA): writing up each call, filing the follow-up tasks, and getting ready
-for the next session.
+Claude Code skills that take the busywork out of running customer engagements: prepare for a meeting, automatically recap meetings (no prompt needed) and create a customer-facing document of all meetings, create Jira tickets as needed, and create a historical deep research for old-logo customers.
 
 This repo includes:
 
-- **Five Claude Code skills** (in `claude-code/`): three you prompt yourself to recap a call or
-  prep for a session, one that keeps a customer-facing Doc of all meetings, and one that runs
-  the recap for you. They're listed in the table below.
 - **An installer** (`install.sh`) and a **setup guide** ([ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md)).
   The installer asks a few questions, installs the skills with your settings, and creates your
-  **Active Customers Doc**, the Google Doc listing the customers the skills work on. The guide
-  walks you through the Jira and Google Drive sign-ins.
+  **Active Customers Doc**, the Google Doc listing the customers the skills use and easy to maintain. 
+  The guide walks you through the Jira and Google Drive sign-ins.
 - **An automated workflow** (`customer-recap-check`): an hourly scheduled task in the Claude
   desktop app. It finds Gong's "call is ready" emails for your Active customers, writes the
   recap and Jira tickets, updates the customer-facing Doc, and reports in your Slack self-DM.
   See "`customer-recap-check` workflow" below for the flowchart.
-
+- **Five Claude Code skills** (in `claude-code/`): 
 | Skill | What it does | How it runs |
 |---|---|---|
 | **`customer-meeting-recap`** | After a call, turns the recording or transcript into a recap Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the LaunchDarkly team committed to | **Manual:** you prompt it (`/customer-meeting-recap`). The recap check also runs it automatically |
@@ -26,8 +21,7 @@ This repo includes:
 | **`customer-shared-notes`** | Adds each recap to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`, newest meeting on top, without Jira tickets or internal links | **Manual** (`/customer-shared-notes`), and **automatic:** the recap check runs it after every recap |
 | **`customer-recap-check`** | Every hour, looks for Gong's "call is ready" emails for your Active customers, recaps the new ones, updates the Master Engagement Doc, and tells you in your Slack self-DM, asking there when links are missing | **Automatic workflow:** a scheduled task in the Claude desktop app, set up once ("set up the recap check") |
 
-**Where you call them from:** Claude Code on your Mac, either the Claude desktop app's **Code
-tab** or `claude` in a terminal. You can't call them from Slack or the Chat tab. Slack is only
+**Where you call them from:** Claude Code. You can't call them from Slack or the Chat tab. Slack is only
 where the recap check reports to you and asks for missing links; you answer by replying in the
 post's thread, and the next hourly run reads your reply.
 
@@ -173,24 +167,24 @@ What each hourly run does, in live mode:
 
 ```mermaid
 flowchart TD
-    T([Scheduled task: every hour, 9:05 to 21:05 on weekdays]) --> AC[Read your Active Customers Doc]
-    AC --> E[Search Gmail for Gong's call-is-ready emails, by each Active row's Gong account]
-    E --> C{Exact Gong account match with an Active row?}
-    C -- No --> X([Skip silently, never opened again])
+    T([Scheduled hourly task (9:05 to 21:05)]) --> AC[Find active customers in “Active Customers Doc”]
+    AC --> E[Search for “Gong's call-is-ready” email]
+    E --> C{Find Gong account match with an active customer?}
+    C -- No --> X([Skip it])
     C -- Yes --> D{Already recapped?}
     D -- Yes --> X2([Skip it])
     D -- No --> TR{Full transcript in Glean?}
     TR -- Not yet --> W([Wait for the next run])
     TR -- Yes --> L{Links missing?}
     L -- No --> R
-    L -- Yes --> Q2[Ask once in your Slack self-DM for all of them] --> H[(Held call, waiting for your reply)]
-    H -. next run .-> RP{Did you reply in the post's thread in your self-DM?}
+    L -- Yes --> Q2[Ask in your Slack self-DM for all missing links] --> H[(Held call, waiting for your reply)]
+    H -. next run .-> RP{Did you reply to the self-DM in thread?}
     RP -- Yes, with the links --> R
     RP -- No --> DF{Is the Drive folder known?}
-    DF -- Yes --> NF[Use Not found for the missing links] --> R
-    DF -- No --> RM[Remind you in the same self-DM thread, once a day] --> H
-    R[Write the recap Doc and create the Jira tickets] --> SN[Add the meeting to the Master Engagement Doc, never twice]
-    SN --> P[Post recap ready in your self-DM, with any links still needed]
+    DF -- Yes --> NF[Use “Not found” for missing links in document] --> R
+    DF -- No --> RM[Remind in the self-DM] --> H
+    R[Write recap Doc & create Jira tickets] --> SN[Add last recap to the “Master Engagement Doc”]
+    SN --> P[Post “Recap ready” in self-DM, with any missing links]
 ```
 
 **Log:** every step is logged as it happens, with its own time, to
