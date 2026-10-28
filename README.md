@@ -183,7 +183,7 @@ flowchart TD
     TR -- Not yet --> W([Wait for the next run])
     TR -- Yes --> L{Links missing?}
     L -- No --> R
-    L -- Yes --> Q2[Ask once in Slack for all of them] --> H[(Held call, waiting for your reply)]
+    L -- Yes --> Q2[Ask once in your Slack self-DM for all of them] --> H[(Held call, waiting for your reply)]
     H -. next run .-> RP{Did you reply in the post's thread in your self-DM?}
     RP -- Yes, with the links --> R
     RP -- No --> DF{Is the Drive folder known?}
