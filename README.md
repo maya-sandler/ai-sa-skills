@@ -320,7 +320,11 @@ git clone <this repo's URL>
 tasks go to: the letters before the dash in ticket keys (`ABC` in `ABC-123`). It's the project's
 short name, not a secret or an API key, and it's separate from your API token. Use your own project, so your tickets
 don't land in someone else's. The installer doesn't ask for it; it stops and reminds you if it
-isn't set. Replace `ABC` with your key:
+isn't set.
+
+To find your key, open any ticket in the project where your customer tasks should go. The
+ticket number starts with the key: for a ticket `SA-482`, the key is `SA`. Replace `ABC` with
+your key:
 
 ```bash
 cd ai-sa-skills && python3 claude-code/customer-recap-check/scripts/recap_check.py config set jira_project ABC
