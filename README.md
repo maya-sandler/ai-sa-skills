@@ -170,7 +170,7 @@ What each hourly run does, in live mode:
 
 ```mermaid
 flowchart TD
-    T(["Scheduled hourly task (9:05 to 21:05)"]) --> AC[Find active customers in “Active Customers Doc”]
+    T(["Scheduled hourly task (9:05 to 21:05)"]) --> AC[Find active customers in “Active Customers” doc]
     AC --> E[Search for “Gong's call-is-ready” email]
     E --> C{Find Gong account match with an active customer?}
     C -- No --> X([Skip it])
