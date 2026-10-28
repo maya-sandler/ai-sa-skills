@@ -238,8 +238,11 @@ know:
 - **Gong account:** the account name Gong shows, so the recap check finds the customer's calls.
 - **Status:** Active or Not active.
 
-Its links are copied into each customer's `CLAUDE.md` for the skills' reference. If the two
-disagree, the Doc wins. A customer that isn't in the Doc, or isn't Active, gets a message
+**Changes flow into `CLAUDE.md` automatically.** Every hourly recap check copies each row into
+its customer's `CLAUDE.md`, in a section called "From the Active Customers Doc", and creates the
+folder and `CLAUDE.md` for a new Active customer. So edit the Doc, not that section: an edit
+reaches `CLAUDE.md` within the hour (during the check's hours). The rest of `CLAUDE.md`
+(opportunities, team, calls) is never touched by this. If the two disagree, the Doc wins. A customer that isn't in the Doc, or isn't Active, gets a message
 asking you to mark it Active, and nothing else. `install.sh` creates the Doc (its last question), and
 "set up the recap check" creates it if it's still missing. Without it, the skills work from
 `CLAUDE.md` alone.

@@ -31,6 +31,7 @@ Write every helper command out in full; putting it in a shell variable breaks un
 |---|---|
 | `config get [KEY]` / `config set KEY VALUE` | Reads or sets one setting in `~/.config/sa-skills/config.json`, keeping the rest |
 | `customers init --folder ID` / `customers read --folder ID` | Creates the Active Customers Doc / returns its Active rows |
+| `customers sync --folder ID [--dry-run]` | Copies each row into its customer's `CLAUDE.md` ("From the Active Customers Doc" section); creates the folder for a new Active customer |
 | `calls get --id ID` / `calls mark --id ID --status S ...` | The processed-calls log in `~/.config/sa-skills/processed-calls.json`. Statuses: `waiting`, `done`, `held`, `skipped`, `error`, `dry-run` |
 | `calls waiting` / `calls held` | Calls still to recap (`waiting` or `dry-run`) / calls waiting for the SA in Slack (`held`, or `done` with links still missing) |
 | `gong-email --file PATH` | Reads a saved Gong "call is ready" email and prints its call ID, clean call link, title, account, date and duration |
@@ -168,7 +169,11 @@ after the last follow-up the check posted in that thread).
 | `done` with `missing` | None | Nothing |
 
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. It returns only rows whose
-Status is Active (any case); never work on any other customer. No Active rows: log "no active
+Status is Active (any case); never work on any other customer. Then, in live mode, run
+`customers sync --folder <sa_drive_folder>` (in dry-run mode add `--dry-run`). It copies every
+row into its customer's `CLAUDE.md`, in the "From the Active Customers Doc" section only, and
+creates the folder and `CLAUDE.md` for a new Active customer. It never touches the rest of the
+file. Log one activity line with what it created and updated. No Active rows: log "no active
 customers", and stop quietly.
 
 **5. New Gong emails, for active customers only.** Look only for emails about the Active rows
