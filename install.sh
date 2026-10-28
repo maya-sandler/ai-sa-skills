@@ -235,6 +235,7 @@ if [ -f "$CONFIG_DIR/google/token.json" ]; then echo "  ✓ Google Drive: signed
 elif [ -f "$CONFIG_DIR/google/client_secret.json" ]; then echo "  ✗ Google Drive: client saved, not signed in yet. See ACCESS-AND-SETUP.md, step B6"
 else echo "  ✗ Google Drive: not set up. See ACCESS-AND-SETUP.md, Part B"; fi
 echo
-echo "Next: open a Claude Code session in $customers_t/<customer>, then ask it to recap a call"
-echo "or prep for a session. The skill creates the customer's folder if it doesn't exist yet."
-echo "For automatic recaps, ask Claude to \"set up the recap check\" (see README.md)."
+echo "Next steps:"
+echo "  1. Go to your Active Customers Doc and update it with your customers. This lets you use"
+echo "     the skills and the automatic recaps.${doc:+ $doc}"
+echo "  2. Open a Claude Code session and call the skills 🙂"
