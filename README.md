@@ -8,10 +8,14 @@ This repo includes:
   The installer asks a few questions, installs the skills with your settings, and creates your
   **Active Customers Doc**, the Google Doc listing the customers the skills use and easy to maintain. 
   The guide walks you through the Jira and Google Drive sign-ins.
-- **An automated workflow** (`customer-recap-check`): an hourly scheduled task in the Claude
-  desktop app. It finds Gong's "call is ready" emails for your Active customers, writes the
-  recap and Jira tickets, updates the customer-facing Doc, and reports in your Slack self-DM.
-  See "`customer-recap-check` workflow" below for the flowchart.
+- **Two automated workflows**, run by one hourly scheduled task in the Claude desktop app
+  (`customer-recap-check`):
+  1. **Automatic recaps:** finds Gong's "call is ready" emails for your Active customers, writes
+     the recap and Jira tickets, updates the customer-facing Doc, and reports in your Slack
+     self-DM. See "`customer-recap-check` workflow" below for the flowchart.
+  2. **Active Customers sync:** copies your Active Customers Doc into each customer's
+     `CLAUDE.md`, and creates the folder for a new Active customer. Skipped silently when
+     there's no Active Customers Doc. See "Your Active Customers Doc" below.
 - **Five Claude Code skills** (in `claude-code/`):
 
 | Skill | What it does | How it runs |
@@ -20,7 +24,7 @@ This repo includes:
 | **`customer-session-prep`** | Before a call, writes a one-page prep brief (a Google Doc in the same folder) from that folder's recaps, so you know in two minutes what to deliver, what's still open, and what to ask | **Manual:** you prompt it (`/customer-session-prep`) |
 | **`customer-engagement-prep`** | The same brief plus the engagement's history (earlier engagements, older folders, every Gong call), for a new engagement or an account you're picking up | **Manual:** you prompt it (`/customer-engagement-prep`) |
 | **`customer-shared-notes`** | Adds each recap to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`, newest meeting on top, without Jira tickets or internal links | **Manual** (`/customer-shared-notes`), and **automatic:** the recap check runs it after every recap |
-| **`customer-recap-check`** | Every hour, looks for Gong's "call is ready" emails for your Active customers, recaps the new ones, updates the Master Engagement Doc, and tells you in your Slack self-DM, asking there when links are missing | **Automatic workflow:** a scheduled task in the Claude desktop app, set up once ("set up the recap check") |
+| **`customer-recap-check`** | Every hour, syncs your Active Customers Doc into each customer's `CLAUDE.md`, then looks for Gong's "call is ready" emails for your Active customers, recaps the new ones, updates the Master Engagement Doc, and tells you in your Slack self-DM, asking there when links are missing | **Automatic workflow:** a scheduled task in the Claude desktop app, set up once ("set up the recap check") |
 
 **Where you call them from:** Claude Code. You can't call them from Slack or the Chat tab. Slack is only
 where the recap check reports to you and asks for missing links; you answer by replying in the
@@ -131,7 +135,8 @@ trigger: a call whose Gong email arrives by about 21:00 is recapped the same day
 at the first check of the next weekday.
 
 1. **Reads your Active Customers Doc** (see "Your Active Customers Doc" below) and works only on
-   the rows marked Active.
+   the rows marked Active. It also copies every row into its customer's `CLAUDE.md` (the
+   Active Customers sync).
 2. **Finds Gong's "call is ready" emails for your active customers only,** since the last run
    (Gmail, through Glean). It searches once per Active row, by its Gong account, and works only on
    emails whose Gong account exactly matches an Active row. Anything else is skipped silently, so
