@@ -279,8 +279,9 @@ this `CLAUDE.md` is kept on your computer.
 - **Claude Code**, with the **Glean** and **Slack** connectors switched on. In the Claude
   desktop app, open the connectors settings and check both are connected and on. Glean reads
   Gong emails and transcripts, Drive, Jira and Salesforce; Slack reads the customer's channels
-  and posts to your self-DM. Google Calendar isn't needed: the recap check works from Gong's
-  emails.
+  and posts to your self-DM. **Gmail** must be reachable through Glean, since the recap check
+  finds Gong's "call is ready" emails there: in Glean, check that a search shows your Gmail. A
+  separate Gmail or Google Calendar connector in Claude isn't needed.
 - **macOS** with Homebrew and Python 3 (tested on macOS; Linux should work with small changes).
 - **A Jira project of your own** for customer tasks, plus a **Jira API token**.
 - **Edit access to each customer's Google Drive folder**, plus a **Google OAuth client** you
