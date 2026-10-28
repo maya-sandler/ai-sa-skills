@@ -225,21 +225,27 @@ from any device. **Every customer skill reads it first and works only on custome
 Active** (any case), so old customers are left alone. Put in it whatever you want the skills to
 know:
 
-| Customer | Documentation name | Folder link | Slack channels | Gong account | Status |
-| --- | --- | --- | --- | --- | --- |
-| Acme | Acme Corp | `<Drive folder link>` | `<Slack channel links>` | Acme Corporation | Active |
+| Customer | Documentation name | Folder link | Salesforce opportunity | Slack channels | Gong account | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Acme | Acme Corp | `<Drive folder link>` | `<Salesforce opportunity link>` | `<Slack channel links>` | Acme Corporation | Active |
 
 - **Customer:** your name for it. Its local folder is that name in lowercase, with hyphens.
 - **Documentation name:** the name used in every Doc, e.g. `Acme Corp – Meeting Recap –
   2026-10-26`. Blank: the Customer value is used.
 - **Folder link:** the Drive folder where the customer's recaps and prep briefs live.
+- **Salesforce opportunity:** the link to the opportunity you're working on now. It tells the
+  skills which opportunity in `CLAUDE.md` a call or brief belongs to.
 - **Slack channels:** the customer's channels and chats (shared channel, internal account channel,
   group DMs). The skills read them for context and never name them in a Doc or ticket.
 - **Gong account:** the account name Gong shows, so the recap check finds the customer's calls.
 - **Status:** Active or Not active.
 
-Its links are copied into each customer's `CLAUDE.md` for the skills' reference. If the two
-disagree, the Doc wins. A customer that isn't in the Doc, or isn't Active, gets a message
+**Changes flow into `CLAUDE.md` automatically.** Every hourly recap check copies each row into
+its customer's `CLAUDE.md`, in a section called "From the Active Customers Doc", and creates the
+folder and `CLAUDE.md` for a new Active customer. So edit the Doc, not that section: an edit
+reaches `CLAUDE.md` within the hour (during the check's hours). The rest of `CLAUDE.md`
+(opportunities, team, calls) is never touched by this. With no Active Customers Doc in your
+folder, the sync is skipped silently and no `CLAUDE.md` changes. If the two disagree, the Doc wins. A customer that isn't in the Doc, or isn't Active, gets a message
 asking you to mark it Active, and nothing else. `install.sh` creates the Doc (its last question), and
 "set up the recap check" creates it if it's still missing. Without it, the skills work from
 `CLAUDE.md` alone.

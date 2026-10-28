@@ -99,7 +99,7 @@ any tickets not created yet, adding their keys to the recap's Jira column.
 ## Active Customers Doc (every customer skill)
 
 The SA keeps an **Active Customers** Google Doc: one row per customer, with Customer,
-Documentation name, Folder link, Slack channels, Gong account and Status. All the customer skills
+Documentation name, Folder link, Salesforce opportunity, Slack channels, Gong account and Status. All the customer skills
 (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`,
 `customer-shared-notes`, `customer-recap-check`) read it first, and **work only on customers
 whose Status is Active** (any case), so old customers are left alone.
@@ -126,6 +126,11 @@ sa_drive_folder`). The command prints the row, or `"customer": null` if it isn't
   If no entry has it, and `CLAUDE.md` has no opportunity or exactly one without a Drive folder,
   write it into that entry (or a new one). If other entries have other folders, ask which
   opportunity it is (unattended: don't wait; see "Unattended mode").
+- **Salesforce opportunity** (`salesforce_link`): the opportunity being worked on now. It
+  picks the `CLAUDE.md` entry that has this link, before the Folder link does. If no entry has
+  it, and `CLAUDE.md` has no opportunity or exactly one without a Salesforce link, write it into
+  that entry (or a new one). Otherwise it's a new opportunity: Step 1 says what to do
+  (unattended: see "Unattended mode").
 - **Slack channels:** the channels and chats to read for context. Copy them into `CLAUDE.md`'s
   **Slack** section; `none` means there are none. They're never named in a Doc or ticket.
 - **Local folder** (`local_folder`): the customer's folder is `{{CUSTOMERS_DIR}}/<local_folder>/`.

@@ -30,8 +30,8 @@ write the full command:
 ## Step 1: Customer context and session date
 
 First check the customer's row in the Active Customers Doc, as the recap skill's "Active
-Customers Doc" section says: stop if it isn't Active, and use its Documentation name, Folder link
-and Slack channels.
+Customers Doc" section says: stop if it isn't Active, and use its Documentation name, Folder link,
+Salesforce opportunity and Slack channels.
 
 Read the customer folder's `CLAUDE.md` (`{{CUSTOMERS_DIR}}/<customer>/`) for the epic key,
 team and Opportunities list. If you aren't in a customer folder, find the right one under

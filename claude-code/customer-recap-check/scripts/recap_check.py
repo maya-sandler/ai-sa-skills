@@ -16,6 +16,11 @@ Commands (every one prints JSON):
   customers read --folder ID --customer NAME
                                         one customer's row, any status, matched by Customer,
                                         Documentation name or folder name; "customer": null if absent
+  customers sync --folder ID [--dry-run]
+                                        copy each row into its customer's CLAUDE.md under
+                                        customers_dir, in the "From the Active Customers Doc"
+                                        section only; creates the folder for a new Active customer.
+                                        No Doc in the folder: skips, changing nothing
 
   calls get --id CALL_ID                what happened to a Gong call before, or null
   calls mark --id CALL_ID --status S [--customer C] [--date D] [--title T] [--url U]
@@ -73,11 +78,12 @@ also live in each customer's CLAUDE.md for the skills' reference.
 - **Documentation name:** the customer's name as written in Doc names. Leave blank if it's the
   same as the Customer value.
 - **Folder link:** in Google Drive.
+- **Salesforce opportunity:** the link to the opportunity you're working on now.
 - **Status:** Active or Not active. Only Active customers are worked on.
 
-| Customer | Documentation name | Folder link | Slack channels | Gong account | Status |
-| --- | --- | --- | --- | --- | --- |
-| Acme | Acme Corp | (Drive folder link) | (Slack channel links) | Acme Corporation | Example |
+| Customer | Documentation name | Folder link | Salesforce opportunity | Slack channels | Gong account | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Acme | Acme Corp | (Drive folder link) | (Salesforce opportunity link) | (Slack channel links) | Acme Corporation | Example |
 """
 
 
@@ -184,12 +190,14 @@ def customer_row(row):
     folder = get("folder link", "folder")
     folder_url = (URL.findall(folder) or [""])[0]
     folder_id = re.search(r"/folders/([A-Za-z0-9_-]+)", folder_url)
+    salesforce = get("salesforce opportunity", "salesforce")
     slack = get("slack channels", "slack")
     return {
         "customer": customer,
         "documentation_name": get("documentation name") or customer,
         "folder_link": folder_url,
         "folder_id": folder_id.group(1) if folder_id else "",
+        "salesforce_link": (URL.findall(salesforce) or [""])[0],
         "local_folder": slug(customer),
         "slack_channels": "none" if slack.strip().lower() == "none" else URL.findall(slack),
         "gong_account": get("gong account"),
@@ -209,6 +217,9 @@ def cmd_customers(a):
             f = save_markdown(g, svc, a.folder, CUSTOMERS_DOC, CUSTOMERS_TEMPLATE)
             out({"created": f})
         return
+    if not found and a.action == "sync":
+        out({"skipped": "no Active Customers Doc in that folder: nothing synced"})
+        return
     if not found:
         fail("no Active Customers Doc in that folder yet: run 'customers init --folder %s'" % a.folder)
     rows = [customer_row(r) for r in parse_table(doc_markdown(g, svc, found[0]["id"]))]
@@ -223,9 +234,78 @@ def cmd_customers(a):
             return
         out({"doc": found[0].get("webViewLink"), "customer": rows[0]})
         return
+    if a.action == "sync":
+        out(sync_customers(rows, a.dry_run))
+        return
     if not a.all:
         rows = [r for r in rows if r["active"]]
     out({"doc": found[0].get("webViewLink"), "customers": rows})
+
+
+SYNC_START = "<!-- active-customers:start -->"
+SYNC_END = "<!-- active-customers:end -->"
+
+
+def sync_block(row):
+    slack = row["slack_channels"]
+    slack = "none" if slack == "none" else (", ".join(slack) or "not given")
+    return "\n".join([
+        SYNC_START,
+        "## From the Active Customers Doc",
+        "",
+        "Copied from the Active Customers Doc by the recap check. Change the Doc, not this section.",
+        "",
+        "- Documentation name: %s" % row["documentation_name"],
+        "- Drive folder: %s" % (row["folder_link"] or "not given"),
+        "- Salesforce opportunity: %s" % (row["salesforce_link"] or "not given"),
+        "- Slack channels: %s" % slack,
+        "- Gong account: %s" % (row["gong_account"] or "not given"),
+        "- Status: %s" % (row["status"] or "not given"),
+        SYNC_END,
+    ])
+
+
+def sync_text(text, block):
+    """Replace the synced section, or add it after the first heading (or at the top)."""
+    if SYNC_START in text and SYNC_END in text:
+        head, rest = text.split(SYNC_START, 1)
+        return head + block + rest.split(SYNC_END, 1)[1]
+    lines = text.split("\n")
+    at = next((i + 1 for i, l in enumerate(lines) if l.startswith("# ")), 0)
+    rest = lines[at:]
+    while rest and not rest[0].strip():
+        rest = rest[1:]
+    return "\n".join(lines[:at] + ["", block, ""] + rest).lstrip("\n")
+
+
+def sync_customers(rows, dry_run):
+    base = load(CONFIG, {}).get("customers_dir", "")
+    if not base.startswith(("~", "/")):
+        fail("customers_dir isn't set to a folder path: rerun install.sh")
+    base = os.path.expanduser(base)
+    done = {"created": [], "updated": [], "unchanged": [], "skipped": []}
+    for row in rows:
+        if not row["local_folder"]:
+            continue
+        path = os.path.join(base, row["local_folder"], "CLAUDE.md")
+        exists = os.path.exists(path)
+        if not exists and not row["active"]:
+            done["skipped"].append(row["customer"])  # no folder for a customer that isn't Active
+            continue
+        old = open(path).read() if exists else "# %s\n" % row["customer"]
+        new = sync_text(old, sync_block(row))
+        if exists and new == old:
+            done["unchanged"].append(row["customer"])
+            continue
+        done["updated" if exists else "created"].append(row["customer"])
+        if not dry_run:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            tmp = path + ".tmp"
+            with open(tmp, "w") as f:
+                f.write(new)
+            os.replace(tmp, path)
+    done["dry_run"] = dry_run
+    return done
 
 
 # --- processed calls ------------------------------------------------------
@@ -393,10 +473,11 @@ def main():
     c.add_argument("value", nargs="?")
 
     cu = sub.add_parser("customers")
-    cu.add_argument("action", choices=["init", "read"])
+    cu.add_argument("action", choices=["init", "read", "sync"])
     cu.add_argument("--folder", required=True)
     cu.add_argument("--all", action="store_true")
     cu.add_argument("--customer")
+    cu.add_argument("--dry-run", action="store_true")
 
     ca = sub.add_parser("calls")
     ca.add_argument("action", choices=["get", "mark", "waiting", "held"])

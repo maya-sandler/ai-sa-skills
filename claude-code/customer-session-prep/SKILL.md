@@ -34,7 +34,7 @@ the full command:
 
 1. **Active Customers Doc.** Check the customer's row, as the recap skill's "Active Customers
    Doc" section says. Stop if it isn't Active. Use its Documentation name for `<Customer>`, its
-   Folder link and its Slack channels.
+   Folder link, its Salesforce opportunity and its Slack channels.
 2. **Customer folder.** Read `{{CUSTOMERS_DIR}}/<local_folder>/CLAUDE.md` for the epic key, team,
    tech stack and the opportunity's links (Salesforce, Vitalstatistix, session plan). If there's
    no folder, create it as the recap skill's Step 1 says.
