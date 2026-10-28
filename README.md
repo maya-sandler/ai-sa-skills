@@ -350,7 +350,7 @@ An answer that doesn't fit (a "yes" where a folder or site should be) is asked a
 | The processed-calls log, run log and shared-notes ledger in `~/.config/sa-skills/` | Left alone |
 | Your Active Customers Doc | Left alone: it finds the Doc already in the folder instead of making a second one |
 | Google and Jira sign-ins | Never read or changed |
-| The Drive helper's Python libraries | Reused, and updated if needed |
+| The Drive helper's Python libraries | Reused; only missing ones are installed |
 
 It also installs the Drive helper's Python libraries, then shows which sign-ins are still needed
 and the link to your Active Customers Doc. The Doc needs the Google Drive sign-in, so on a first
