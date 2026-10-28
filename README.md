@@ -339,6 +339,19 @@ Then it shows **"Please confirm your selections"**, with every answer and your J
 Check them, then press **Enter** to install, or type `n` to stop without changing anything.
 An answer that doesn't fit (a "yes" where a folder or site should be) is asked again, never saved.
 
+**What it replaces, and what it leaves alone,** when things already exist (it's safe to rerun):
+
+| Already there | What the installer does |
+|---|---|
+| The installed skills it installs (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`, `customer-recap-check`) in the skills folder | **Replaced** with this repo's copy. Any edits you made to the installed copy are lost: edit `claude-code/` instead |
+| Other skills in the same skills folder | Left alone |
+| Your customer folders and each customer's `CLAUDE.md` | Left alone. It only creates the top folder if it's missing |
+| `~/.config/sa-skills/config.json` | Your answers are updated; everything else in it (Jira project key, Slack self-DM, recap check mode) is kept |
+| The processed-calls log, run log and shared-notes ledger in `~/.config/sa-skills/` | Left alone |
+| Your Active Customers Doc | Left alone: it finds the Doc already in the folder instead of making a second one |
+| Google and Jira sign-ins | Never read or changed |
+| The Drive helper's Python libraries | Reused, and updated if needed |
+
 It also installs the Drive helper's Python libraries, then shows which sign-ins are still needed
 and the link to your Active Customers Doc. The Doc needs the Google Drive sign-in, so on a first
 install it's created when you run `./install.sh` again after signing in.

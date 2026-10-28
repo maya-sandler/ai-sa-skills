@@ -138,6 +138,8 @@ echo "Customer folders: $customers_t"
 echo "Jira:             project $jira_project on $jira_site"
 echo "History folder:   $history_drive_folder"
 echo "Your Drive folder: ${sa_drive_folder:-none (skipped)}"
+echo "This replaces the installed copies of: ${SKILLS[*]}."
+echo "Your customer folders, other skills, logs and Active Customers Doc are left as they are."
 read -r -p "Install with these? Press Enter or type y to go ahead, n to stop: " ok
 case "${ok:-Y}" in [Yy]*) ;; *) echo "Nothing changed."; exit 0 ;; esac
 
