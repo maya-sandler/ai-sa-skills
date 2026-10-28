@@ -61,9 +61,10 @@ everything below applies, and it overrides any step that says to ask the SA:
 
   | Prompt starts with | Links still missing after Step 1.3 | What to do |
   |---|---|---|
-  | `UNATTENDED RUN` | Any (Drive folder, Salesforce, Vitalstatistix, session plan, Slack channels), or which opportunity / a new opportunity | Stop before writing anything. Return `held` with every one in `needs`, and one `question` asking for all of them |
+  | `UNATTENDED RUN` | The Drive folder, or which opportunity / a new opportunity (with or without other links) | Stop before writing anything: there's nowhere to save the recap. Return `held` with every missing link in `needs`, and one `question` asking for all of them |
+  | `UNATTENDED RUN` | Only Salesforce, Vitalstatistix, session plan or Slack channels | Don't wait for them. Write `Not found` for them, and finish. Return `done` with `missing` naming them, and one `question` asking for all of them |
   | `UNATTENDED RUN, RESUME` (gives the SA's answer) | Whatever the answer didn't give | Save the answer to `CLAUDE.md` (Step 1.5). Still no Drive folder, or still unclear which opportunity: return `held` again. Otherwise write `Not found` for the rest, and finish. Return `done` with `missing` naming them |
-  | `UNATTENDED RUN, NO ANSWER` | Salesforce, Vitalstatistix, session plan, Slack channels | Write `Not found` for them, and finish. Return `done` with `missing` naming them |
+  | `UNATTENDED RUN, NO ANSWER` (a call held by a recap the SA ran by hand) | Salesforce, Vitalstatistix, session plan, Slack channels | Write `Not found` for them, and finish. Return `done` with `missing` naming them |
 
 - **Never take a link from a Glean or Slack search,** not even as a suggestion. Only the prompt,
   the customer's `CLAUDE.md` and the opportunity's Drive folder count.
@@ -84,7 +85,7 @@ RECAP_RESULT
  "tickets": [{"key": "KEY-123", "title": "Alex: …", "link": "<url>"}],
  "needs": ["drive_folder" | "opportunity" | "new_opportunity" | "salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],
  "missing": ["salesforce" | "vitalstatistix" | "session_plan" | "slack_channels"],
- "question": "<one message for the SA listing every missing link, if held>",
+ "question": "<one message for the SA listing every missing link, if held, or done with missing>",
  "error": "<what failed, if error>"}
 ```
 

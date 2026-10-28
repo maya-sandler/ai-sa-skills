@@ -38,8 +38,8 @@ Write every helper command out in full; putting it in a shell variable breaks un
 | `slack-upload --url URL --file PATH` | Uploads a file's bytes to a Slack upload URL |
 
 `calls mark` options: `--customer`, `--date`, `--title`, `--url`, `--duration`, `--note`,
-`--slack-ts`, `--missing <links, comma-separated>` (`none` clears it) and `--reminded
-<YYYY-MM-DD>`. It keeps fields you leave out.
+`--slack-ts`, `--missing <links, comma-separated>` (`none` clears it), `--reminded
+<YYYY-MM-DD>` and `--recap <recap Doc ID>`. It keeps fields you leave out.
 
 The Drive helper (`gdrive.py`) and the transcript helper (`gong_transcript.py`) are described in
 the `customer-meeting-recap` skill.
@@ -133,13 +133,13 @@ Recap at most **5 calls per run**; leave the rest waiting for the next run.
 
 **Missing links.** A recap needs the opportunity's links from the customer's `CLAUDE.md`: Drive
 folder, Salesforce opportunity, Vitalstatistix, session plan, and the customer's Slack channels
-and chats. When any are missing, the recap skill returns `held` with the list, and the check
-asks the SA **once**, in one Slack post listing all of them. What happens next:
+and chats. When any are missing, the check asks the SA **once**, in one Slack post listing all
+of them. Only a missing Drive folder or an unclear opportunity holds the recap:
 
-| Missing | No reply by the next run | Reply after the recap was made |
+| Missing | The recap | When the SA replies in the thread |
 |---|---|---|
-| **Drive folder**, or which opportunity it is | Stays held: no Doc can be made. Remind in the thread at most once a day | — |
-| Only other links (Salesforce, Vitalstatistix, session plan, Slack channels) | Recap and tickets are made with `Not found` for them; a follow-up in the thread lists the links still needed | Saved to `CLAUDE.md` for the next recap |
+| **Drive folder**, or which opportunity it is | Held (`held`): no Doc can be made. Remind in the thread at most once a day | The recap and tickets are made |
+| Only other links (Salesforce, Vitalstatistix, session plan, Slack channels) | Made right away (`done`), with `Not found` for them. The "recap ready" post asks for them | Saved to `CLAUDE.md`, and filled in on the recap Doc's Customer links (Slack channels go only in `CLAUDE.md`) |
 
 Never work out a missing link yourself, and never search Slack or Glean for the customer's
 channels. Only the SA's answer counts.
@@ -161,9 +161,9 @@ after the last follow-up the check posted in that thread).
 |---|---|---|
 | `held`, any note | Links, an opportunity name, or "skip" | In live mode, read the transcript (step 7, "Transcript") and run `customer-meeting-recap` with a prompt starting `UNATTENDED RUN, RESUME`, giving the call details as in step 8 and the SA's answer word for word. Handle its `RECAP_RESULT` as in step 9, posting in the same thread |
 | `held`, any note | "Not a customer call" or "ignore" | `calls mark --status skipped`, and confirm in the thread |
-| `held`, its note lists only links other than the Drive folder and opportunity | None | In live mode, run the recap with a prompt starting `UNATTENDED RUN, NO ANSWER` (call details as in step 8). It writes `Not found` for the missing links. Handle its `RECAP_RESULT` as in step 9, in the same thread: the "recap ready" post lists the links still needed |
+| `held` by a recap the SA ran by hand, its note lists only links other than the Drive folder and opportunity | None | In live mode, run the recap with a prompt starting `UNATTENDED RUN, NO ANSWER` (call details as in step 8). It writes `Not found` for the missing links. Handle its `RECAP_RESULT` as in step 9, in the same thread: the "recap ready" post lists the links still needed |
 | `held`, its note has `drive_folder`, `opportunity`, `new_opportunity` or `unclear-customer` (older runs wrote `needs-drive-folder`) | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
-| `done` with `missing` | Links | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section). Then `calls mark --missing <what's still missing, or none>`, and confirm in the thread |
+| `done` with `missing` | Links, or "skip" / "none" for some | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section; a link that doesn't exist is `none`). Then, if the call has a `recap` and the reply gave a Salesforce, Vitalstatistix or session plan link, update that Doc: find its exact name with `list --folder <Drive folder> --contains "Meeting Recap"` (the entry with that ID), `read --id <recap>` into the scratchpad, replace those `Not found` lines in Customer links, and `save` under that name. Never add Slack channels to the Doc. Then `calls mark --missing <what's still missing, or none>` (a skipped link counts as no longer missing), and confirm in the thread with the recap link. Audit line for the Doc |
 | `done` with `missing` | None | Nothing |
 
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. It returns only rows whose
@@ -252,7 +252,7 @@ Never fall back to the email's Key points, Gong's call summary or Glean search s
 
 | Status | Post to Slack | Then |
 |---|---|---|
-| `done` | First update the Master Engagement Doc (below). Then "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file, and the Master Engagement Doc line. If `missing` isn't empty, add "Links still needed: <links>. Reply in this thread to add them" | `calls mark --status done --missing <missing, or none> --slack-ts <ts>` (for a thread reply, keep the first post's `ts`); audit lines for the recap Doc and each ticket |
+| `done` | First update the Master Engagement Doc (below). Then "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file, and the Master Engagement Doc line. If `missing` isn't empty, add its `question` and "Reply in this thread to add them to the recap" | `calls mark --status done --missing <missing, or none> --recap <recap.id> --slack-ts <ts>` (for a thread reply, keep the first post's `ts`); audit lines for the recap Doc and each ticket |
 | `held` | "*<Customer>* recap waiting: <its question> Reply in this thread." | `calls mark --status held --note <needs, comma-separated> --slack-ts <ts> --reminded <today>` |
 | `waiting` | Nothing | Leave it `waiting` for the next run |
 | `error` | "*<Customer>* recap failed: <error>" | `calls mark --status error --note <error>`; the next run doesn't retry it |

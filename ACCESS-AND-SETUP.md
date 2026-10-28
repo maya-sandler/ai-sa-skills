@@ -259,10 +259,10 @@ recap is ready or a question waits for you.
 **D5. Go live** when the dry runs look right: say **"switch the recap check to live"**.
 
 **When links are missing,** it asks you once in your self-DM for all of them; reply in the
-thread. No reply by the next run: it recaps with `Not found` for those links, creates the
-tickets, and lists the links still needed in the thread, where a later reply is saved for next
-time. A missing Drive folder is the exception: with nowhere to save the recap, the call waits,
-with a reminder at most once a day.
+thread. Only a missing Drive folder holds the recap: with nowhere to save it, the call waits,
+with a reminder at most once a day. Other missing links don't: the recap and tickets are made
+with `Not found` for them, and when you reply, the links are saved for next time and filled in
+on the recap Doc.
 
 The desktop app must be open and your Mac awake at check time; a missed check runs at the next
 one. Everything the check produces goes to Google Drive, Jira and your Slack self-DM; on your

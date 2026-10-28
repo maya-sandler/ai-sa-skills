@@ -141,12 +141,12 @@ at the first check of the next weekday.
 3. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
    each recap records, so a call is never recapped twice.
 4. **Waits for the full transcript** in Glean, and writes the recap only from it.
-5. **Runs `customer-meeting-recap` unattended:** it never stops to wait. If links are missing, it
-   asks you once in Slack for all of them and holds the call. No reply by the next run: it
-   recaps with `Not found` for those links, creates the tickets, and lists the links still
-   needed in the thread; a later reply is saved for the next recap. Only a missing Drive folder
-   keeps the call held, since there's nowhere to save the recap, with a reminder at most once a
-   day.
+5. **Runs `customer-meeting-recap` unattended:** it never stops to wait. Only a missing Drive
+   folder (or not knowing which opportunity it is) holds the call, since there's nowhere to save
+   the recap: it asks you in Slack, and reminds you at most once a day. Any other missing link
+   (Salesforce, Vitalstatistix, session plan, Slack channels) doesn't hold it: the recap and
+   tickets are made with `Not found` for it, and the "recap ready" post asks you for it. When you
+   reply, the link is saved for next time and filled in on the recap Doc.
 6. **Updates the Master Engagement Doc:** after each finished recap, runs `customer-shared-notes`
    to add the meeting to the opportunity's customer-facing `<Customer> & LaunchDarkly – Meeting
    Notes` Doc. It runs only once the recap is saved, never in dry-run mode, and never adds a
@@ -176,24 +176,23 @@ flowchart TD
     D -- Yes --> X2([Skip it])
     D -- No --> TR{Full transcript in Glean?}
     TR -- Not yet --> W([Wait for the next run])
-    TR -- Yes --> L{Links missing?}
-    L -- No --> R
-    L -- Yes --> Q2[Ask in your Slack self-DM for all missing links] --> H[(Held call, waiting for your reply)]
+    TR -- Yes --> DF{Drive folder and opportunity known?}
+    DF -- Yes --> R
+    DF -- No --> Q2[Ask in your Slack self-DM for all missing links] --> H[(Held call, waiting for your reply)]
     H -. next run .-> RP{Did you reply to the self-DM in thread?}
-    RP -- Yes, with the links --> R
-    RP -- No --> DF{Is the Drive folder known?}
-    DF -- Yes --> NF[Use “Not found” for missing links in document] --> R
-    DF -- No --> RM[Remind in the self-DM] --> H
-    R["Write recap Doc & create Jira tickets"] --> SN[Add last recap to the “Master Engagement Doc”]
-    SN --> P[Post “Recap ready” in self-DM, with any missing links]
+    RP -- Yes, with the folder --> R
+    RP -- No --> RM[Remind in the self-DM, once a day] --> H
+    R["Write recap Doc & create Jira tickets, “Not found” for other missing links"] --> SN[Add last recap to the “Master Engagement Doc”]
+    SN --> P[Post “Recap ready” in self-DM, asking for any missing links]
+    P -. you reply .-> U[Save the links, fill them in on the recap Doc]
 ```
 
 **Log:** every step is logged as it happens, with its own time, to
 `~/.config/sa-skills/recap-check-log.md` on your Mac (one section per run). The run ends with a
 one-line summary. Nothing is logged to Drive.
 
-**Replying to a held call:** reply in the thread of the post that asked, in your Slack self-DM,
-with the links. Replying "skip" for a link writes `Not found` for it.
+**Replying:** reply in the thread of the post that asked, in your Slack self-DM, with the links.
+Replying "skip" for a link writes `Not found` for it, and it isn't asked for again.
 
 **Not in the diagram:** you can still run `/customer-meeting-recap` yourself at any time, for
 example for a call the check skipped. It asks you for missing links in chat and in your self-DM,
