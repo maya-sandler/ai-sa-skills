@@ -19,7 +19,8 @@ Commands (every one prints JSON):
   customers sync --folder ID [--dry-run]
                                         copy each row into its customer's CLAUDE.md under
                                         customers_dir, in the "From the Active Customers Doc"
-                                        section only; creates the folder for a new Active customer
+                                        section only; creates the folder for a new Active customer.
+                                        No Doc in the folder: skips, changing nothing
 
   calls get --id CALL_ID                what happened to a Gong call before, or null
   calls mark --id CALL_ID --status S [--customer C] [--date D] [--title T] [--url U]
@@ -212,6 +213,9 @@ def cmd_customers(a):
         else:
             f = save_markdown(g, svc, a.folder, CUSTOMERS_DOC, CUSTOMERS_TEMPLATE)
             out({"created": f})
+        return
+    if not found and a.action == "sync":
+        out({"skipped": "no Active Customers Doc in that folder: nothing synced"})
         return
     if not found:
         fail("no Active Customers Doc in that folder yet: run 'customers init --folder %s'" % a.folder)
