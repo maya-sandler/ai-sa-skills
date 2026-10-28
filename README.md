@@ -138,8 +138,9 @@ at the first check of the next weekday.
 1. **Reads your Active Customers Doc** (see "Your Active Customers Doc" below) and works only on
    the rows marked Active.
 2. **Finds Gong's "call is ready" emails for your active customers only,** since the last run
-   (Gmail, through Glean). It searches once per Active row, by its Gong account and Documentation
-   name, so emails about other calls are never opened and make no work. Gong sends one to each
+   (Gmail, through Glean). It searches once per Active row, by its Gong account, and works only on
+   emails whose Gong account exactly matches an Active row. Anything else is skipped silently, so
+   other calls make no work. Gong sends one to each
    participant when a call's recording is ready, so it knows you were on the call. It reads only
    the call link, account, date and duration from each email.
 3. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
@@ -163,26 +164,23 @@ at the first check of the next weekday.
    a section per run, with an **activity** line for every step and tool call and an **audit**
    line for every change made in Drive, Jira or Slack. Nothing is logged to Drive.
 
+It starts in **dry-run mode** (see below): it only reports what it would do, until you switch it
+to live.
+
 #### `customer-recap-check` workflow
 
-What each hourly run does, and how a recap you start yourself joins it when links are missing:
+What each hourly run does, in live mode:
 
 ```mermaid
 flowchart TD
-    T([Scheduled task: every hour, 9:05 to 21:05 on weekdays]) --> AC[Read your Active Customers list]
+    T([Scheduled task: every hour, 9:05 to 21:05 on weekdays]) --> AC[Read your Active Customers Doc]
     T --> A[Read your replies in the Slack threads of held calls]
-    M([Manual prompting skill /customer-meeting-recap]) --> MA{Links missing?}
-    MA -- No --> R
-    MA -- Yes --> MQ[Ask once, in chat and in your self-DM]
-    MQ -- You answer in chat --> R
-    MQ -- No answer in chat --> H
     A -- Links or skip --> R
     A -- No reply, Drive folder known --> NF[Use Not found for the missing links] --> R
     A -- No reply, Drive folder missing --> RM[Remind in the thread, once a day]
-    AC --> E[Search Gmail for Gong's call-is-ready emails about those customers only]
-    E --> C{Gong account matches an Active row?}
-    C -- No --> X([Skip, never opened again])
-    C -- Unclear --> Q1[Ask in Slack which customer] --> H
+    AC --> E[Search Gmail for Gong's call-is-ready emails, by each Active row's Gong account]
+    E --> C{Exact Gong account match with an Active row?}
+    C -- No --> X([Skip silently, never opened again])
     C -- Yes --> D{Already recapped?}
     D -- Yes --> X2([Skip it])
     D -- No --> TR{Full transcript in Glean?}
@@ -193,12 +191,33 @@ flowchart TD
     H -. next run .-> A
     R[Write the recap Doc and create the Jira tickets] --> SN[Add the meeting to the Master Engagement Doc, never twice]
     SN --> P[Post recap ready in your self-DM, with any links still needed]
-    P --> LG[Log the run in recap-check-log.md]
 ```
 
-In dry-run mode the check stops before the recap: it posts "would recap" for each call instead.
+**Log:** every step is logged as it happens, with its own time, to
+`~/.config/sa-skills/recap-check-log.md` on your Mac (one section per run). The run ends with a
+one-line summary. Nothing is logged to Drive.
 
-It starts in **dry-run mode**: it only reports what it would do, until you switch it to live.
+**Not in the diagram:** you can still run `/customer-meeting-recap` yourself at any time, for
+example for a call the check skipped. It asks you for missing links in chat and in your self-DM,
+and if you don't answer, the next hourly run finishes the call from the Slack thread.
+
+#### Dry-run mode
+
+Dry-run mode is a trial mode, so you can see what the check would do before it writes anything.
+**The check starts in dry-run mode when you set it up,** and stays in it until you say "switch
+the recap check to live".
+
+- **What it does:** every hourly run reads your Active Customers Doc, finds and matches the Gong
+  emails, and skips calls already done, exactly as in live mode. Then, instead of the recap, it
+  posts one message per call in your self-DM: "Dry run: would recap *\<title\>* with
+  \<Customer\> and add it to the Master Engagement Doc; links missing: \<links\>".
+- **What it doesn't do:** it writes no recap, creates no Jira tickets, doesn't touch the Master
+  Engagement Doc, and asks no questions. Its log lines are marked "dry run".
+- **What it's for:** checking that your Active Customers rows (Gong account, Folder link) find the
+  right calls, and that the links each recap needs are in place, before anything is created.
+- **Going live:** say "switch the recap check to live" (or "switch the recap check to dry run" to
+  go back). Calls a dry run reported in the last 2 days are then recapped for real. Older ones
+  are skipped.
 
 ## Your Active Customers Doc
 

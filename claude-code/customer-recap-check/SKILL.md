@@ -159,7 +159,6 @@ after the last follow-up the check posted in that thread).
 
 | Call | SA's reply | Do |
 |---|---|---|
-| `held`, note `unclear-customer` | "yes" | `calls mark --status waiting --customer <C>`; it's recapped in step 7 |
 | `held`, any note | Links, an opportunity name, or "skip" | In live mode, read the transcript (step 7, "Transcript") and run `customer-meeting-recap` with a prompt starting `UNATTENDED RUN, RESUME`, giving the call details as in step 8 and the SA's answer word for word. Handle its `RECAP_RESULT` as in step 9, posting in the same thread |
 | `held`, any note | "Not a customer call" or "ignore" | `calls mark --status skipped`, and confirm in the thread |
 | `held`, its note lists only links other than the Drive folder and opportunity | None | In live mode, run the recap with a prompt starting `UNATTENDED RUN, NO ANSWER` (call details as in step 8). It writes `Not found` for the missing links. Handle its `RECAP_RESULT` as in step 9, in the same thread: the "recap ready" post lists the links still needed |
@@ -174,8 +173,7 @@ customers", and stop quietly.
 **5. New Gong emails, for active customers only.** Look only for emails about the Active rows
 from step 4, so calls with anyone else are never opened or worked on. For each Active row, search
 Glean with `app: gmail`, query `Call recording and analysis is ready <Gong account>`,
-`sort_by_recency`, `num_results: 20`; search again with its **Documentation name** in place of
-the Gong account, if they differ. Results from Gong have Source `gmailnative`, Owner `Gong`,
+`sort_by_recency`, `num_results: 20`. Results from Gong have Source `gmailnative`, Owner `Gong`,
 and a subject like `<meeting title>: Call recording and analysis is ready`. Keep those
 **created** (the `Created` time, in UTC) after `gong_emails_since` (also UTC) minus one hour, or
 after the start of today if it's empty; never more than 3 days back. If all 20 are that new, page
@@ -192,14 +190,12 @@ For each email kept, in order:
    email's "Key points", and you must not read or use them: the recap is written only from the
    transcript.
 3. `calls get --id <gong_call_id>`. Any status at all: it's already known, skip it.
-4. **Match it to a customer:**
-
-   | Email | Customer |
-   |---|---|
-   | `account` is one row's **Gong account** (ignoring case) | That row |
-   | No account matches, but the title contains exactly one row's **Customer** or **Documentation name** | Unclear: post once to Slack ("Is *<title>* (<date>) a call with <customer>? Reply yes, or 'not a customer call'"), and `calls mark --status held --note unclear-customer --title ... --date ... --url ... --duration ... --slack-ts <ts> --reminded <today>` |
-   | No account matches, and the title has two rows' names | Unclear, as above, naming both |
-   | No row matches (the search matched other text in the email) | Not an active customer's call: skip it, `calls mark --status skipped --note "not an active customer"` so it isn't opened again, and log only that |
+4. **Match it to a customer:** only an exact match counts. Its `account` must be one Active
+   row's **Gong account** (ignoring case). Anything else, including a title or email that only
+   mentions the customer, is skipped silently: `calls mark --status skipped --note "not an
+   active customer"` so it isn't opened again, and log only that. Post nothing and ask nothing:
+   if the SA needs that call, they fix the Gong account (in Gong or in the Doc), or run
+   `/customer-meeting-recap` themselves.
 
 5. Matched: `calls mark --id <gong_call_id> --status waiting --customer <Customer> --date <date>
    --title <title> --url <call_url> --duration <duration>`.
