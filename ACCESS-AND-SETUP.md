@@ -1,13 +1,15 @@
 # SA customer skills: access and setup
 
-Two Claude Code skills for LaunchDarkly Solutions Architects:
+Claude Code skills for LaunchDarkly Solutions Architects:
 
 - **`customer-meeting-recap`** turns a customer call (Gong link or transcript) into a recap
   Google Doc in the customer's Drive folder, and creates your follow-up Jira tasks under the
   customer's epic in your Jira project.
 - **`customer-session-prep`** writes a one-page prep brief for your next session as a Google Doc
-  in the same folder: status, what you owe them, their open questions, their support tickets and
-  their tech stack.
+  in the same folder, from that folder's recaps: status, what you owe the customer, open
+  questions, support tickets and tech stack.
+- **`customer-engagement-prep`** writes the same brief plus the engagement's history, for a new
+  engagement or an account you're picking up.
 
 Everything they produce goes to Google Drive. Nothing is saved on your Mac except a small
 `CLAUDE.md` per customer with the links.
@@ -39,6 +41,11 @@ either one, and both are used only through a command-line tool.
 | Atlassian Rovo MCP connector | ❌ Blocked | Couldn't be connected. Probably the same admin policy |
 | Google Drive connector for Claude | ❌ Not enabled | Not available to Claude at the time of writing. Ask IT if that has changed |
 | Gong / Salesforce connectors | ➖ Not available | Use Glean instead |
+| **Gmail through Glean** | ✅ Works | Glean reaches your Gmail live. The recap check uses it only to find Gong's "call recording and analysis is ready" emails, about two hours before Glean's Gong search finds the call |
+| **Slack** connector, posting by file share | ✅ Works | The recap check posts to your self-DM by sharing a small file with a message, and reads your replies. Only the file-upload tools can post |
+| **Slack** connector, reading a customer's channels | ✅ Works | The recap reads only the channels and chats you listed for that customer, for context since the last call |
+| Slack connector, plain send-message tool | ❌ Not offered | Not among the connector's tools at the time of writing; ask the admin who manages Claude connectors. The recap check would switch to it |
+| Gong webhooks | ➖ Not needed | Need a Gong admin and a public endpoint. The recap check reads Gong's emails instead |
 | API keys in `.env` for **Claude Desktop chat** | ❌ Won't work | Desktop chats run in a cloud sandbox and can't see your Mac's files or CLIs. That's why these skills run in Claude Code |
 
 ## Setup (about 25 minutes)
@@ -48,23 +55,34 @@ app), not in the chat box.
 
 ### Part 0: Run the installer (about 2 minutes)
 
-Clone this repo anywhere you like, then run its installer from inside it:
+Clone this repo anywhere you like. Before the first install, set your **Jira project key**: the
+project where your customer tasks go (the letters in ticket keys like `ABC-123`). Use your own
+project, so your tickets don't land in someone else's. The installer never asks for it:
 
 ```bash
-cd path/to/ai-sa-skills && ./install.sh
+cd path/to/ai-sa-skills && python3 claude-code/customer-recap-check/scripts/recap_check.py config set jira_project ABC
 ```
 
-It asks four questions:
+Then run the installer from the same folder:
 
-1. **Where to install the skills.** Choose `~/.claude/skills` (recommended), so they work in
-   every Claude Code session, or one project's `.claude/skills` folder.
-2. **Where your customer folders should live.** The default is `~/work/customers`, but any
-   folder works, e.g. `~/clients` or `~/Documents/customers`. Each customer gets one folder
-   there, holding just a `CLAUDE.md` of links.
-3. **Your Jira site**, e.g. `yourcompany.atlassian.net`. If `acli` is already signed in, it's
-   offered as the default.
-4. **Your Jira project key**: the project where your customer tasks go (the letters in ticket
-   keys like `ABC-123`). Use your own project, so your tickets don't land in someone else's.
+```bash
+./install.sh
+```
+
+Each question suggests a value: press Enter (or type `y`) to keep it.
+
+1. **Where to install the skills.** Enter for `~/.claude/skills` (recommended), so they work in
+   every Claude Code session, or `2` for one project's `.claude/skills` folder.
+2. **The local path for your customer CLAUDE.md files.** It suggests `~/work/customers`; type another path (starting with
+   `~/` or `/`) to change it, e.g. `~/clients`. Each customer gets one folder there, holding just
+   a `CLAUDE.md` of links.
+3. **Your Jira site**, e.g. `yourcompany.atlassian.net`. If `acli` is already signed in, it asks
+   you to confirm that site.
+4. **Your team's shared base Drive folder** for customer projects (required). Everyone uses the
+   same one; paste its link.
+5. **Your own Drive folder for the Active Customers Doc.** Paste its link, or type `pass`.
+
+It then shows "Please confirm your selections"; Enter installs, `n` stops.
 
 It then fills your answers into the skills, installs them, and installs the Drive helper's
 Python libraries. Your answers are saved in `~/.config/sa-skills/config.json` and offered as
@@ -181,8 +199,12 @@ The installer already put the skills in place; Claude Code picks them up automat
 
 **C1. Add a customer.** Easiest: just run a skill with the customer's links in your prompt
 (Salesforce opportunity and/or Drive folder). If there's no `<customer folders>/<customer>/`
-folder yet (the location you chose in Part 0), the skill creates it with a `CLAUDE.md`. It asks for any link that isn't in your
-prompt or the Drive folder, and saves your answers there.
+folder yet (the location you chose in Part 0), the skill creates it with a `CLAUDE.md`. Before
+saving the recap, it asks once, in one message, for every link that isn't in your prompt or the
+Drive folder, and saves your answers there. That includes the customer's **Slack channels and
+chats** (shared channel, internal account channel, group DMs): send each one's link (right-click
+→ Copy link), or say "none". The skills never search for channels themselves, read only the
+ones you list, and never name them in a Doc or ticket.
 
 `CLAUDE.md` keeps one entry per **opportunity**, named like `RSA50 opportunity (1)`,
 `RSA100 opportunity`, `RSA50 opportunity (2)`, each with its own Salesforce, Drive folder,
@@ -205,6 +227,59 @@ to it", ask the folder's owner to make you an editor.
 
 - **After a call:** "Recap this call: <Gong link>" (or paste the transcript).
 - **Before a call:** "Prep me for the next <customer> session."
+
+### Part D: Automatic recaps (optional, about 10 minutes)
+
+`customer-recap-check` recaps your customer calls on a schedule, with no prompt. It needs no new
+credential: it uses the Jira and Drive sign-ins from Parts A and B, plus two Claude connectors.
+
+It starts from Gong's **"call recording and analysis is ready"** email, which Gong sends to each
+participant about two hours before Glean's Gong search finds the call. Keep those emails on in
+Gong (they are by default), and don't filter them out of your inbox. The check reads only those
+emails, and only the call link, account, date and duration from each. The recap is always
+written from the call's full transcript, so a call waits until Glean has it.
+
+**D1. Check the connectors.** In claude.ai, **Settings → Connectors**, make sure these are
+connected and enabled for Claude Code:
+
+| Connector | Tools the check uses |
+|---|---|
+| **Glean** | Search and read document: Gong's emails in your Gmail, the call's transcript, the customer's Drive folder |
+| **Slack** | Read channel and read thread (your self-DM, and the customer channels you listed), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts to your self-DM |
+
+**D2. Have a Drive folder of your own** for the Active Customers Doc, which every customer skill
+reads. You need edit access to it. Give it to `install.sh` (its last question): once you're signed in to
+Google Drive, the installer creates the Doc there and prints its link. Otherwise setting up the
+check creates it.
+
+**D3. Set it up.** In any Claude Code session, say **"set up the recap check"**. It:
+
+1. Saves your Drive folder and creates the **Active Customers** Doc there, if the installer
+   hasn't already. Add one row per
+   customer, with its Documentation name, Drive folder link, Slack channels, Gong account and
+   Status Active. Every customer skill works only on Active rows (see the README).
+2. Finds your Slack self-DM from your Slack user ID and saves it. Nothing to look up yourself.
+3. Asks which hours to run, then creates an hourly scheduled task in the desktop app.
+4. Starts in **dry-run mode**: for a while it only reports what it would do.
+
+**D4. Approve its tools once.** On the first runs, approve the tools it uses when asked
+(Glean, Slack, and Bash for the helper scripts and `acli`), so later runs don't stop
+for permission. Turn on Claude notifications on your Mac and phone, so you're pinged when a
+recap is ready or a question waits for you.
+
+**D5. Go live** when the dry runs look right: say **"switch the recap check to live"**.
+
+**When links are missing,** it asks you once in your self-DM for all of them; reply in the
+thread. Only a missing Drive folder holds the recap: with nowhere to save it, the call waits,
+with a reminder at most once a day. Other missing links don't: the recap and tickets are made
+with `Not found` for them, and when you reply, the links are saved for next time and filled in
+on the recap Doc. If the opportunity was missing, the meeting is then added to the Master
+Engagement Doc too.
+
+The desktop app must be open and your Mac awake at check time; a missed check runs at the next
+one. Everything the check produces goes to Google Drive, Jira and your Slack self-DM; on your
+Mac it keeps only `~/.config/sa-skills/processed-calls.json` (Gong call IDs and outcomes) and its
+run log, `~/.config/sa-skills/recap-check-log.md`.
 
 ## Rules for tokens and secrets
 
@@ -251,8 +326,10 @@ ai-sa-skills/
 ├── ACCESS-AND-SETUP.md          ← this guide
 ├── install.sh                   ← asks where things go, then installs (Part 0)
 └── claude-code/                 ← the skills' master copy, with placeholders
-    ├── customer-meeting-recap/  (SKILL.md, scripts/jira_ticket.py, scripts/gdrive.py, references/)
-    └── customer-session-prep/   (SKILL.md)
+    ├── customer-meeting-recap/  (SKILL.md, scripts/jira_ticket.py, scripts/gdrive.py, scripts/gong_transcript.py, references/)
+    ├── customer-session-prep/   (SKILL.md)
+    ├── customer-engagement-prep/ (SKILL.md)
+    └── customer-recap-check/    (SKILL.md, scripts/recap_check.py), see Part D
 ```
 
 **To change the skills,** edit the master copy in `claude-code/`, not the installed copy, then
