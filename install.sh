@@ -64,8 +64,7 @@ case "$prev_customers" in "~"*|/*) ;; *) prev_customers="" ;; esac  # ignore a b
 default_customers="${prev_customers:-~/work/customers}"
 echo
 echo "What is the local path you want your customer CLAUDE.md files saved in?"
-echo "Each customer gets one small folder there with a CLAUDE.md of links; recaps and briefs"
-echo "are saved to Google Drive, not here."
+echo "(Each customer gets one small folder there with a CLAUDE.md of links; recaps and briefs are saved to Google Drive, not here)"
 while :; do
   read -r -p "Press Enter to keep $default_customers, or type another folder (e.g. ~/customers): " customers
   if keep "$customers"; then customers="$default_customers"; break; fi
