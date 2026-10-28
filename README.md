@@ -12,7 +12,8 @@ This repo includes:
   desktop app. It finds Gong's "call is ready" emails for your Active customers, writes the
   recap and Jira tickets, updates the customer-facing Doc, and reports in your Slack self-DM.
   See "`customer-recap-check` workflow" below for the flowchart.
-- **Five Claude Code skills** (in `claude-code/`): 
+- **Five Claude Code skills** (in `claude-code/`):
+
 | Skill | What it does | How it runs |
 |---|---|---|
 | **`customer-meeting-recap`** | After a call, turns the recording or transcript into a recap Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the LaunchDarkly team committed to | **Manual:** you prompt it (`/customer-meeting-recap`). The recap check also runs it automatically |
@@ -167,7 +168,7 @@ What each hourly run does, in live mode:
 
 ```mermaid
 flowchart TD
-    T([Scheduled hourly task (9:05 to 21:05)]) --> AC[Find active customers in “Active Customers Doc”]
+    T(["Scheduled hourly task (9:05 to 21:05)"]) --> AC[Find active customers in “Active Customers Doc”]
     AC --> E[Search for “Gong's call-is-ready” email]
     E --> C{Find Gong account match with an active customer?}
     C -- No --> X([Skip it])
@@ -183,7 +184,7 @@ flowchart TD
     RP -- No --> DF{Is the Drive folder known?}
     DF -- Yes --> NF[Use “Not found” for missing links in document] --> R
     DF -- No --> RM[Remind in the self-DM] --> H
-    R[Write recap Doc & create Jira tickets] --> SN[Add last recap to the “Master Engagement Doc”]
+    R["Write recap Doc & create Jira tickets"] --> SN[Add last recap to the “Master Engagement Doc”]
     SN --> P[Post “Recap ready” in self-DM, with any missing links]
 ```
 
