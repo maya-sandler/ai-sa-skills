@@ -20,7 +20,7 @@ Commands (every one prints JSON):
   calls get --id CALL_ID                what happened to a Gong call before, or null
   calls mark --id CALL_ID --status S [--customer C] [--date D] [--title T] [--url U]
              [--duration D] [--note N] [--slack-ts TS] [--missing LINKS|none] [--reminded YYYY-MM-DD]
-             [--recap DOC_ID]
+             [--recap DOC_ID] [--shared-notes added|already_there|held|error]
                                         record a call: waiting, done, held, skipped, error or dry-run
   calls waiting                         calls whose Gong email came in, still to be recapped
                                         (status waiting, or dry-run)
@@ -249,7 +249,7 @@ def cmd_calls(a):
                                     ("title", a.title), ("url", a.url), ("duration", a.duration),
                                     ("note", a.note),
                                     ("slack_ts", a.slack_ts), ("reminded", a.reminded),
-                                    ("recap", a.recap)) if v})
+                                    ("recap", a.recap), ("shared_notes", a.shared_notes)) if v})
     if a.missing:
         entry["missing"] = [] if a.missing == "none" else [m.strip() for m in a.missing.split(",") if m.strip()]
     entry.setdefault("first_seen", datetime.datetime.now().isoformat(timespec="seconds"))
@@ -402,7 +402,7 @@ def main():
     ca.add_argument("action", choices=["get", "mark", "waiting", "held"])
     ca.add_argument("--id")
     for opt in ("--status", "--customer", "--date", "--title", "--url", "--duration", "--note", "--slack-ts",
-                "--missing", "--reminded", "--recap"):
+                "--missing", "--reminded", "--recap", "--shared-notes"):
         ca.add_argument(opt)
 
     lg = sub.add_parser("log")

@@ -262,7 +262,8 @@ recap is ready or a question waits for you.
 thread. Only a missing Drive folder holds the recap: with nowhere to save it, the call waits,
 with a reminder at most once a day. Other missing links don't: the recap and tickets are made
 with `Not found` for them, and when you reply, the links are saved for next time and filled in
-on the recap Doc.
+on the recap Doc. If the opportunity was missing, the meeting is then added to the Master
+Engagement Doc too.
 
 The desktop app must be open and your Mac awake at check time; a missed check runs at the next
 one. Everything the check produces goes to Google Drive, Jira and your Slack self-DM; on your

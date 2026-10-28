@@ -39,7 +39,8 @@ Write every helper command out in full; putting it in a shell variable breaks un
 
 `calls mark` options: `--customer`, `--date`, `--title`, `--url`, `--duration`, `--note`,
 `--slack-ts`, `--missing <links, comma-separated>` (`none` clears it), `--reminded
-<YYYY-MM-DD>` and `--recap <recap Doc ID>`. It keeps fields you leave out.
+<YYYY-MM-DD>`, `--recap <recap Doc ID>` and `--shared-notes <its SHARED_NOTES_RESULT status>`.
+It keeps fields you leave out.
 
 The Drive helper (`gdrive.py`) and the transcript helper (`gong_transcript.py`) are described in
 the `customer-meeting-recap` skill.
@@ -163,7 +164,7 @@ after the last follow-up the check posted in that thread).
 | `held`, any note | "Not a customer call" or "ignore" | `calls mark --status skipped`, and confirm in the thread |
 | `held`, its note doesn't have `drive_folder` (a recap the SA ran by hand, or an older run) | None | In live mode, run the recap with a prompt starting `UNATTENDED RUN, NO ANSWER` (call details as in step 8). It writes `Not found` for the missing links. Handle its `RECAP_RESULT` as in step 9, in the same thread: the "recap ready" post lists the links still needed |
 | `held`, its note has `drive_folder` or `unclear-customer` (older runs wrote `needs-drive-folder`) | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
-| `done` with `missing` | Links, or "skip" / "none" for some | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section; a link that doesn't exist is `none`). An opportunity name in the reply picks that entry; a new one gets a new entry with that name, holding the reply's links and the recap's Drive folder. Then, if the call has a `recap` and the reply gave the opportunity or a Salesforce, Vitalstatistix or session plan link, update that Doc: find its exact name with `list --folder <Drive folder> --contains "Meeting Recap"` (the entry with that ID), `read --id <recap>` into the scratchpad, replace the `Not found` Opportunity line and Customer links with that opportunity's links from `CLAUDE.md`, and `save` under that name. Never add Slack channels to the Doc. Then `calls mark --missing <what's still missing, or none>` (a skipped link counts as no longer missing), and confirm in the thread with the recap link. Audit line for the Doc |
+| `done` with `missing` | Links, or "skip" / "none" for some | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section; a link that doesn't exist is `none`). An opportunity name in the reply picks that entry; a new one gets a new entry with that name, holding the reply's links and the recap's Drive folder. Then, if the call has a `recap` and the reply gave the opportunity or a Salesforce, Vitalstatistix or session plan link, update that Doc: find its exact name with `list --folder <Drive folder> --contains "Meeting Recap"` (the entry with that ID), `read --id <recap>` into the scratchpad, replace the `Not found` Opportunity line and Customer links with that opportunity's links from `CLAUDE.md`, and `save` under that name. Never add Slack channels to the Doc. If the call's `shared_notes` isn't `added` or `already_there` (an unknown opportunity holds it), run the Master Engagement Doc step (step 9) now. The Master Engagement Doc never gets the links themselves: they're internal. Then `calls mark --missing <what's still missing, or none>` (a skipped link counts as no longer missing), and confirm in the thread with the recap link and the Master Engagement Doc line. Audit line for the Doc |
 | `done` with `missing` | None | Nothing |
 
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. It returns only rows whose
@@ -279,8 +280,9 @@ Read the `SHARED_NOTES_RESULT` block it ends with:
 | `already_there` | Nothing | An activity line |
 | `held` or `error` | "Master Engagement Doc not updated: <reason>" | An activity line with the reason |
 
-Don't retry a `held` or `error` on a later run. Never run it in dry-run mode, or for a recap
-that isn't `done`.
+Then `calls mark --shared-notes <status>`. Don't retry a `held` or `error` on a later run,
+except once after the SA's reply fills in the recap (step 3). Never run it in dry-run mode, or
+for a recap that isn't `done`.
 
 **10. Finish.** `config set gong_emails_since <this run's start time in UTC>`. Log the
 run's end with a one-line summary (emails found, done, held, waiting, skipped). When the run

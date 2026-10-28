@@ -146,7 +146,9 @@ at the first check of the next weekday.
    reminds you at most once a day. Anything else missing (which opportunity it is, Salesforce,
    Vitalstatistix, session plan, Slack channels) doesn't hold it: the recap and tickets are made
    with `Not found` for it, and the "recap ready" post asks you for it. When you reply, the link
-   is saved for next time and filled in on the recap Doc.
+   is saved to the customer's `CLAUDE.md` and filled in on the recap Doc. If the opportunity was
+   missing, the meeting is then added to the Master Engagement Doc (which never shows internal
+   links).
 6. **Updates the Master Engagement Doc:** after each finished recap, runs `customer-shared-notes`
    to add the meeting to the opportunity's customer-facing `<Customer> & LaunchDarkly – Meeting
    Notes` Doc. It runs only once the recap is saved, never in dry-run mode, and never adds a
@@ -184,7 +186,7 @@ flowchart TD
     RP -- No --> RM[Remind in the self-DM, once a day] --> H
     R["Write recap Doc & create Jira tickets, “Not found” for other missing links"] --> SN[Add last recap to the “Master Engagement Doc”]
     SN --> P[Post “Recap ready” in self-DM, asking for any missing links]
-    P -. you reply .-> U[Save the links, fill them in on the recap Doc]
+    P -. you reply .-> U[Save the links to CLAUDE.md, fill them in on the recap Doc, add to the Master Engagement Doc if it was waiting for the opportunity]
 ```
 
 **Log:** every step is logged as it happens, with its own time, to
