@@ -173,8 +173,9 @@ Status is Active (any case); never work on any other customer. Then, in live mod
 `customers sync --folder <sa_drive_folder>` (in dry-run mode add `--dry-run`). It copies every
 row into its customer's `CLAUDE.md`, in the "From the Active Customers Doc" section only, and
 creates the folder and `CLAUDE.md` for a new Active customer. It never touches the rest of the
-file. If it says `skipped` (there's no Active Customers Doc in the folder), skip this sync and
-change no `CLAUDE.md`. Log one activity line with what it created and updated, or that it skipped. No Active rows: log "no active
+file. If it says `skipped` (there's no Active Customers Doc in the folder), skip this sync silently:
+no log line, no Slack post, no `CLAUDE.md` change. Otherwise log one activity line with what it
+created and updated. No Active rows: log "no active
 customers", and stop quietly.
 
 **5. New Gong emails, for active customers only.** Look only for emails about the Active rows
