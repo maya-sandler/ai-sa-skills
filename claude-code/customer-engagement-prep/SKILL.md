@@ -1,6 +1,6 @@
 ---
 name: customer-engagement-prep
-description: Prepare a full engagement prep brief, with the whole engagement history, for an upcoming LaunchDarkly customer session and save it as a Google Doc in the customer's Drive folder. Covers latest status, where any earlier engagement left off (which planned sessions really happened, from older Drive folders and Gong calls), what I owe the customer this session (from my Jira tickets via acli), the customer's open questions, support tickets the customer opened, tech stack and where the engagement stands in the session plan. Works for a new customer and for an existing customer (an existing logo) being picked up again. Use when the user (a LaunchDarkly Solutions Architect) runs /customer-engagement-prep, or asks for an engagement prep, a full history check, or to pick up an existing account before a session. For a quick prep from the current folder's recaps only, use customer-session-prep instead. Usually run from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
+description: Prepare a full engagement prep brief, with the whole engagement history, for an upcoming LaunchDarkly customer session and save it as a Google Doc in the customer's Drive folder. Covers latest status, the customer's business model and a first context design, where any earlier engagement left off (which planned sessions really happened, from older Drive folders and Gong calls), what I owe the customer this session (from my Jira tickets via acli), support tickets the customer opened, tech stack and where the engagement stands in the session plan, then the questions to ask the customer and the LD account team, the customer's questions to answer, and the plan for the session. Works for a new customer and for an existing customer (an existing logo) being picked up again. Use when the user (a LaunchDarkly Solutions Architect) runs /customer-engagement-prep, or asks for an engagement prep, a full history check, or to pick up an existing account before a session. For a quick prep from the current folder's recaps only, use customer-session-prep instead. Usually run from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
 ---
 
 # Customer Engagement Prep Brief (Claude Code)
@@ -8,8 +8,9 @@ description: Prepare a full engagement prep brief, with the whole engagement his
 You are helping a LaunchDarkly Solutions Architect (SA) get ready for their next session with
 a customer, with the **whole engagement history**: earlier engagements, older Drive folders and
 every Gong call. (`customer-session-prep` is the quick version: it reads only the current
-folder's recaps.) The goal is a brief they can read in **2 minutes**: one page, bullets, and each item
-saying what to *do or say* in the session. Save it as a Google Doc in the customer's Drive
+folder's recaps.) The goal is a brief the SA can scan in a few minutes: bullets, key words in
+bold, where things stand first, then, under `# NEXT:`, the questions to ask (the customer and
+the LD account team), the customer's questions to answer, and the plan for the session. Save it as a Google Doc in the customer's Drive
 folder and link it in chat.
 
 **Everything you produce goes to Google Drive, never to the local customer folder.** Write the
@@ -129,33 +130,66 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
      that happened.
    - **Account overview:** also check internal account overviews, e.g. a Slack `#ask-riley`
      thread for the account ID. Read the replies, not just the question.
+9. **Business model and context design.** From the discovery and handoff docs and the calls, work
+   out how the customer sells its product, and what that means for LD:
+   - **Who the customer's customers are** (tenants, companies, users), how many, and how each one
+     is deployed (shared or one deployment per tenant).
+   - **How the customer gates features today:** tiers, SKUs, upsells and trials, and the manual
+     work they take (e.g. "toggle eight flags for one SKU").
+   - **A first context design** to propose: context kinds and attributes, and segments (beta,
+     design partners, tiers). Say what to ask before it's settled, e.g. whether targeting is
+     needed inside a tenant.
+   - **Concerns the customer raised** (privacy of code and data, security, compliance), with how
+     LD addresses them (e.g. only the context the app sends, private attributes).
+   - **What the deal's numbers mean here,** e.g. whether client-side MAU matters for an all
+     server-side app.
+   When sources disagree (two different tenant counts), give both and make it a question to ask.
+10. **Questions to ask.** Collect what the SA should confirm before or at the session, by who
+    answers it:
+    - **The LD account team** (AE, SE, CSM): the plan or SKU bought, the SOW scope and hours, what
+      a POC or demo validated, open promises. Anything you inferred rather than read (e.g. a trial
+      or plan name in Vitalstatistix) is a question to confirm, not a conclusion.
+    - **The customer:** gaps in the business model, the context design and the tech stack.
 
-Never make up facts. If a source returns nothing, write "None found".
+Never make up facts. If a source returns nothing, write "None found". When a finding is an
+inference (decoded IDs, plan names, guesses from dates), write it as something to confirm, and
+put it in the questions, never in Latest status as a fact.
 
 ## Step 3: Write the brief
 
+The brief has two parts: **where things stand now**, then, after a `# NEXT:` heading, **what to
+do in the upcoming session**. Use this order and these headings:
+
 ```
 # <Customer> – Engagement Prep and Next Session (<session name>, <YYYY-MM-DD or "date TBD">)
-**Session:** <#/name from session plan> · <topic> · <opportunity name> · <attendees if known>
+**Session:** <#/name from session plan> · <topic> · <opportunity name> · <attendees if known; bold the first names of the LD account team (AE, SE, CSM)>
 
-**Goal for this session:** <one sentence>
+**Goal for <session name>:** <one sentence>
 
 ## Latest status
-- 2–4 bullets: where the engagement is, what last happened (with the date and call link), and any risks.
+- 2–5 bullets: the deal (closed date, what was bought, term), the last call (date and link),
+  risks, and what has to happen before the session. Bold the key words (**no SDK**, **usage is
+  0**, **new to LD**).
+- **Confirm <thing>:** <what the sources say>, for anything inferred rather than read.
 
-## Where the previous engagement left off (existing customer only; leave out otherwise)
+## <Customer> business model and context design
+- How <Customer> sells and deploys its product (tenants, how many, one deployment each or shared).
+  - **<Upsell / trial / tier> today:** how it works now and the manual work it takes.
+- **Context design:** the proposed context kinds, attributes and how the app sends them.
+  - <What to ask before it's settled>
+- **Optional segments:** <beta, design partners, tiers>
+- **Concern: <privacy, security…>** (<who>, <date>). <How LD addresses it>.
+- **<MAU / service connections>:** <whether it matters for this app>
+
+## Pre-sales history for <Customer> / Where the previous engagement left off
+For a new engagement: a table of the pre-sales calls (date, call link, outcome), then bullets for
+promises still open and anything already ruled out of scope. For an existing customer:
 | Planned session (<earlier deck>) | Phase | Happened? | Evidence |
 | <S1 name> | <phase> | ✅ <date> / ⚠️ Partly, <date> / ❌ | <deck link>, <Gong link and title>, one-line outcome |
 - Promises still open from the last session that happened: <item> (<who>, <date>)
-- Worksheets never filled in: <links>
-- Suggested pickup: <which unfinished sessions to finish first, and why>
-
-## Deliver in <session name> (<YYYY-MM-DD or "date TBD">; <who schedules it, if not booked>)
-- ✅ <Done task> → show/explain: <what to demo or say> ([KEY-123](https://{{JIRA_SITE}}/browse/KEY-123))
-- ⚠️ <Still-open task due by now> → <suggested way to handle it> ([KEY-124](...))
-
-## <Customer> open questions
-- <Question> (<who asked>, <date>) → <draft answer / doc link / "need to find out from X">
+- Out of scope: <question> (<who>, <date>)
+  → <why it's out of scope>
+- Worksheets never filled in: <links> · Suggested pickup: <which unfinished sessions first, and why>
 
 ## Follow up on (<Customer> action items)
 - <Owner>: <item> (due <date>)
@@ -166,22 +200,57 @@ Never make up facts. If a source returns nothing, write "None found".
 ## Support tickets
 | Ticket | Subject | Status | Opened |
 
-## Tech stack
-One or two lines: languages · LD SDKs · Relay Proxy · cloud/infra · warehouse · CI/CD · observability · integrations
-
 ## Session plan: where the <Customer> engagement stands
 - Done: <sessions/topics, with dates> · **Upcoming (<session name>, <date or "date TBD">):** <topic> · Next: <topic>
+- <Customer> success criteria (<date>): <the measurable outcomes the customer named>
 
 ## Links
 - <Customer> Drive folder · <Customer> previous engagement folder (existing customer only)
 - Session plan · Last recap
 - <Customer> current Salesforce opportunity · Vitalstatistix <Customer> account
 - Jira epic · Last call recording (Gong, <date>)
+
+## Tech stack
+- **<Language>** (<where>) · **<SDK or wrapper>** <planned / connected>
+  - <Question about it, with a docs link where one helps>
+- **<Infra>**: <shape, e.g. single-tenant per customer>
+- **<Observability>**: <what it collects>
+  - <Question, e.g. OpenTelemetry or something else?>
+- <SSO provider>: [supported by LD](<docs link>)
+- <Existing flags or toggles>: <count, where they live>
+  - <Clean up or migrate?>
+- **Products**: **in scope:** <products> · out of scope: <products>
+
+# NEXT:
+
+## Questions for the <Customer> <session name> (<YYYY-MM-DD or "date TBD">)
+1. <Numbered question for the customer, the most important first>
+   - <Why it matters, or what the sources disagree on>
+
+## Questions for the LD account team before <session name>
+- <AE / SE / CSM first name>: <what to confirm: plan, SOW scope and hours, what a POC validated>
+
+## <Customer> open questions to LD that we will answer
+- <Question> (<who asked>, <date>)
+  → <draft answer, with confirmed docs links / "need to find out from X">
+
+## Plan for <session name> (<YYYY-MM-DD or "date TBD">; <who books it, if not booked>)
+- <Prep before the session, e.g. confirm the SOW scope with the AE; create the Jira epic>
+- ⚠️ <Still-open task due by now> ([KEY-124](https://{{JIRA_SITE}}/browse/KEY-124))
+- **Suggested engagement plan:** <session> → <session> → <session> → handover.
+  - Show **<capability>** live: <what to demo> ([KEY-123](https://{{JIRA_SITE}}/browse/KEY-123) if it's a done ticket). This answers <who>'s "<pain, in their words>".
+  - <Stretch goal> is a bonus (if time allows)
 ```
 
 Rules:
 - Use absolute dates, and make every ticket, doc and call a clickable link.
-- Keep each section to 5 bullets at most. The history table doesn't count toward this.
+- Keep each section to 5 top-level bullets at most; sub-bullets for questions and details don't
+  count, and neither does the history table.
+- **Questions and answers:** put each answer on its own line under the question, starting with
+  `→`. Questions the SA asks go under `# NEXT:`, split into the customer's and the LD account
+  team's; questions the customer asked LD go in "open questions to LD".
+- **Bold the words the SA scans for:** risks, numbers that matter, the capability to show, and
+  in-scope versus out-of-scope.
 - **Name things explicitly.** Never write "they", "them" or "their" for the customer, or "we",
   "us" or "our" for LaunchDarkly. Write the customer's name (e.g. "Acme open questions", "Acme
   uses New Relic") and "LD". This applies to headings, bullets and link labels. Leave quotes
