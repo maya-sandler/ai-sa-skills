@@ -119,10 +119,27 @@ team's older Drive folders and every Gong call for the account, and saves
 `<Customer> – Engagement Prep and Next Session (<session name>, <date or date TBD>)`, for example
 `Acme Corp – Engagement Prep and Next Session (kickoff, date TBD)`:
 
-- Everything in the session prep brief
-- **Where the earlier engagement left off:** each planned session from the old kickoff deck,
-  checked against the Gong calls as happened, partly happened or never happened, plus promises
-  still open and worksheets never filled in
+It has two parts. **Where things stand:**
+
+- Latest status, with anything inferred (a plan name, a trial) marked "Confirm" instead of stated
+  as fact
+- **The customer's business model and context design:** how the customer sells and deploys its
+  product, how it gates features today, a first context kind and segments to propose, concerns
+  the customer raised, and whether the deal's numbers (MAU, service connections) matter here
+- **Where the earlier engagement left off:** the pre-sales calls for a new engagement, or each
+  planned session from the old kickoff deck checked against the Gong calls (happened, partly,
+  never), plus promises still open
+- Action items for the customer and for LD, support tickets, the session plan, links, and the
+  tech stack with a question under each item that's still open
+
+Then, under **NEXT:**
+
+- **Questions for the customer** at the session, numbered, most important first
+- **Questions for the LD account team** (AE, SE, CSM) before the session: plan, SOW scope, what a
+  POC validated
+- **The customer's open questions to LD**, each with the answer on its own line and docs links
+- **The plan for the session:** prep to do first, then the suggested engagement plan with what
+  to show live and which customer pain each answers
 
 Both briefs use the customer's name and "LD" instead of "they" or "we", so they read clearly
 when you forward them.
