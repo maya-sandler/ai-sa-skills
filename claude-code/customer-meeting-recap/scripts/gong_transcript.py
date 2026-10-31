@@ -3,7 +3,8 @@
 
 Glean `read_document` on a Gong call link returns the call in `richDocumentData.content`: a JSON
 string whose `comments` array holds one entry per utterance (`author`, `text`, `createdAt`).
-Save that read_document result to a file, then:
+Save that read_document result to a file (or pass the file Claude Code saved it to when it was
+too large to show), then:
 
   python3 gong_transcript.py --file <saved result> --out <scratchpad>/transcript.txt \
       [--speaker HASH=Name ...]
@@ -52,10 +53,21 @@ def find_content(obj):
     return None
 
 
+def tool_text(obj):
+    """The text of a result Claude Code saved to a file: `[{"type": "text", "text": ...}]`."""
+    if isinstance(obj, list) and obj and all(isinstance(b, dict) and b.get("type") == "text" for b in obj):
+        return "\n".join(b.get("text", "") for b in obj)
+    return None
+
+
 def load_comments(raw):
     content = None
     try:
-        content = find_content(json.loads(raw))
+        parsed = json.loads(raw)
+        text = tool_text(parsed)
+        if text is not None:
+            return load_comments(text)
+        content = find_content(parsed)
     except ValueError:
         # Glean's text output: a line `content: "<JSON string>"`.
         m = re.search(r'^\s*content: (".*")\s*$', raw, re.M)
