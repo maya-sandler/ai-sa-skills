@@ -637,6 +637,7 @@ the next one.
 | `claude-code/customer-session-prep/` | The quick prep skill: `SKILL.md` |
 | `claude-code/customer-engagement-prep/` | The prep skill with the engagement's history: `SKILL.md` |
 | `claude-code/customer-recap-check/` | The automatic recap check: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, the run log, Slack uploads, Gong emails) |
+| `claude-code/customer-shared-notes/` | The Master Engagement Doc skill: `SKILL.md`, `scripts/shared_notes.py` (ledger of recaps already in each Doc); uses the recap skill's Drive helper |
 
 ## Rules for this repo
 
