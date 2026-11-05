@@ -252,7 +252,12 @@ reads. You need edit access to it. Give it to `install.sh` (its last question): 
 Google Drive, the installer creates the Doc there and prints its link. Otherwise setting up the
 check creates it.
 
-**D3. Set it up.** In any Claude Code session, say **"set up the recap check"**. It:
+**D3. Set it up.** Open a Claude Code session in **your clone of this repo** (`ai-sa-skills`),
+and say **"set up the recap check"**. The scheduled task always runs in the folder of the session
+that created it, so create it here, with the skills. Not in a customer folder (those hold only
+each customer's `CLAUDE.md`), and not in a project you might move or delete: if that folder goes
+away, the runs stop with no error. To move the task later, delete it and set it up again from
+here. Setting it up:
 
 1. Saves your Drive folder and creates the **Active Customers** Doc there, if the installer
    hasn't already. Add one row per
@@ -329,7 +334,8 @@ ai-sa-skills/
     ├── customer-meeting-recap/  (SKILL.md, scripts/jira_ticket.py, scripts/gdrive.py, scripts/gong_transcript.py, references/)
     ├── customer-session-prep/   (SKILL.md)
     ├── customer-engagement-prep/ (SKILL.md)
-    └── customer-recap-check/    (SKILL.md, scripts/recap_check.py), see Part D
+    ├── customer-recap-check/    (SKILL.md, scripts/recap_check.py), see Part D
+    └── customer-shared-notes/   (SKILL.md, scripts/shared_notes.py)
 ```
 
 **To change the skills,** edit the master copy in `claude-code/`, not the installed copy, then

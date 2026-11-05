@@ -33,7 +33,7 @@ Write every helper command out in full; putting it in a shell variable breaks un
 | `customers init --folder ID` / `customers read --folder ID` | Creates the Active Customers Doc / returns its Active rows |
 | `customers sync --folder ID [--dry-run]` | Copies each row into its customer's `CLAUDE.md` ("From the Active Customers Doc" section); creates the folder for a new Active customer |
 | `calls get --id ID` / `calls mark --id ID --status S ...` | The processed-calls log in `~/.config/sa-skills/processed-calls.json`. Statuses: `waiting`, `done`, `held`, `skipped`, `error`, `dry-run` |
-| `calls waiting` / `calls held` | Calls still to recap (`waiting` or `dry-run`) / calls waiting for the SA in Slack (`held`, or `done` with links still missing) |
+| `calls waiting` / `calls held` | Calls still to recap (`waiting` or `dry-run`) / calls waiting for the SA in Slack (`held`, `done` with links still missing, or `share_link` still `pending`) |
 | `gong-email --file PATH` | Reads a saved Gong "call is ready" email and prints its call ID, clean call link, title, account, date and duration |
 | `log add --kind activity\|audit --run RUN --text TEXT [--dry-run]` | Appends one line, stamped with the current time, to the run log `~/.config/sa-skills/recap-check-log.md` (one section per run) |
 | `slack-upload --url URL --file PATH` | Uploads a file's bytes to a Slack upload URL |
@@ -64,7 +64,10 @@ Do these in order, telling the SA what each step did.
    customer skill reads it, as the recap skill's "Active Customers Doc" section says.
 3. **Slack self-DM.** Find it as "Slack self-DM" below describes, and save it.
 4. **Mode.** Set `config set recap_check_mode dry-run` unless the SA asks for live.
-5. **Schedule.** Ask which hours to run (suggest every hour, 9:00 to 21:00 on weekdays, so a call that ends by about 20:00 is recapped the same day). Then
+5. **Schedule.** The task runs in this session's folder, for good, so first check it: it must be
+   the SA's clone of the `ai-sa-skills` repo. If it's anywhere else (a customer folder, another
+   project), stop and tell the SA to open a session in their `ai-sa-skills` clone and ask again
+   there: a folder that is later moved or deleted stops every run, with no error. Ask which hours to run (suggest every hour, 9:00 to 21:00 on weekdays, so a call that ends by about 20:00 is recapped the same day). Then
    create the task with the scheduled-tasks tool `create_scheduled_task`:
    - `taskId`: `customer-recap-check`, `title`: `Customer recap check`
    - `cronExpression`: e.g. `5 9-21 * * 1-5` (five past each hour, in local time)
@@ -167,6 +170,11 @@ after the last follow-up the check posted in that thread).
 | `held`, its note has `drive_folder` or `unclear-customer` (older runs wrote `needs-drive-folder`) | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
 | `done` with `missing` | Links, or "skip" / "none" for some | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section; a link that doesn't exist is `none`). An opportunity name in the reply picks that entry; a new one gets a new entry with that name, holding the reply's links and the recap's Drive folder. Then, if the call has a `recap` and the reply gave the opportunity or a Salesforce, Vitalstatistix or session plan link, update that Doc: find its exact name with `list --folder <Drive folder> --contains "Meeting Recap"` (the entry with that ID), `read --id <recap>` into the scratchpad, replace the `Not found` Opportunity line and Customer links with that opportunity's links from `CLAUDE.md`, and `save` under that name. Never add Slack channels to the Doc. If the call's `shared_notes` isn't `added` or `already_there` (an unknown opportunity holds it), run the Master Engagement Doc step (step 9) now. The Master Engagement Doc never gets the links themselves: they're internal. Then `calls mark --missing <what's still missing, or none>` (a skipped link counts as no longer missing), and confirm in the thread with the recap link and the Master Engagement Doc line. Audit line for the Doc |
 | `done` with `missing` | None | Nothing |
+| `share_link` is `pending`, any status | A Gong link that isn't the call's internal link (`call_url`) | It's the customer share link. `calls mark --share-link <link>`. If the call's `shared_notes` is `added` or `already_there`, run `customer-shared-notes` with a prompt starting `UNATTENDED RUN, SHARE LINK` (customer folder, opportunity, recap Doc ID, Gong call ID, meeting date and title, the link). On `added`: `calls mark --share-link-in-doc yes`, audit line, and reply in the thread "Added the share link to *<date> – <title>* in the Master Engagement Doc: <doc link>". Otherwise (no recap yet, or the Doc is held), reply "Got the share link: I'll add it to the Master Engagement Doc with the recap" |
+| `share_link` is `pending`, any status | "no link" | `calls mark --share-link none`, and confirm in the thread |
+
+A reply can hold a share link and other links at once: handle each. The share link never goes
+in `CLAUDE.md`, the recap Doc or the log; log only "share link received".
 
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. It returns only rows whose
 Status is Active (any case); never work on any other customer. Then, in live mode, run
@@ -207,13 +215,27 @@ For each email kept, in order:
 
 5. Matched: `calls mark --id <gong_call_id> --status waiting --customer <Customer> --date <date>
    --title <title> --url <call_url> --duration <duration>`.
+6. **Tell the SA, and ask for a share link.** Post once to Slack (this post starts the call's
+   thread; everything later about this call goes in it):
+
+   > Saw the Gong meeting *<title>* with *<Customer>* (<date>). Internal link: <call_url>
+   > To share the recording with the customer, open the link, click **Share**, create a link for
+   > people outside LaunchDarkly, and reply in this thread with it (or reply "no link"). I'll add
+   > it to this meeting in the Master Engagement Doc. The recap follows once the transcript is in
+   > Glean.
+
+   Then `calls mark --id <gong_call_id> --status waiting --slack-ts <ts> --share-link pending`.
+   No Claude notification for this post. In dry-run mode, post it with "Dry run:" in front and
+   don't set `--share-link`. If Slack couldn't be confirmed (step 2), post nothing now: step 6
+   posts it on a later run.
 
 Delete any email files you wrote to the scratchpad when done.
 
 **6. Skip what's already done.** `calls waiting`. In dry-run mode, leave out calls with status
 `dry-run` (already reported). In live mode, a `dry-run` call first seen more than 2 days ago is
 `calls mark --status skipped --note "dry run only"`; recap the others like `waiting` ones. Take
-the calls left oldest first, at most 5 (with those resumed in step 3). For each:
+the calls left oldest first, at most 5 (with those resumed in step 3). A call with no
+`slack_ts` (Slack was down when its email was found) gets the step 5 post first. For each:
 
 - The customer's folder is `<customers_dir>/<local_folder from the row>`. **No folder yet:**
   create it with a `CLAUDE.md` from the recap skill's `references/customer-folder-template.md`,
@@ -232,7 +254,8 @@ the calls left oldest first, at most 5 (with those resumed in step 3). For each:
    result> --out <scratchpad>/<customer>-<date>-transcript.txt`. It writes the transcript and
    prints its length in `minutes`.
 3. **Not ready** (no content, the helper prints an error, or `minutes` is under half the call's
-   `duration`): log "waiting for transcript" and leave it for the next run. First seen more than
+   `duration`): log "waiting for transcript" and leave it for the next run. Post nothing: the
+   step 5 post already told the SA the recap follows. First seen more than
    2 days ago: post once to Slack ("*<Customer>* call *<title>* (<date>): no transcript in Glean
    after 2 days; recap it by hand"), and `calls mark --status error --note
    "no transcript after 2 days"`.
@@ -256,11 +279,13 @@ Never fall back to the email's Key points, Gong's call summary or Glean search s
   Meeting: <title>, <YYYY-MM-DD>
   ```
 
-**9. Handle the result.** Read the `RECAP_RESULT` block the recap skill ends with:
+**9. Handle the result.** Read the `RECAP_RESULT` block the recap skill ends with. Post each
+message below as a reply in the call's thread (`thread_ts` = its `slack_ts`), and keep that `ts`;
+only a call with no `slack_ts` gets a new post, whose `ts` you save:
 
 | Status | Post to Slack | Then |
 |---|---|---|
-| `done` | First update the Master Engagement Doc (below). Then "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file, and the Master Engagement Doc line. If `missing` isn't empty, add its `question` and "Reply in this thread to add them to the recap" | `calls mark --status done --missing <missing, or none> --recap <recap.id> --slack-ts <ts>` (for a thread reply, keep the first post's `ts`); audit lines for the recap Doc and each ticket |
+| `done` | First update the Master Engagement Doc (below). Then "*<Customer>* recap ready: <n> tickets", with the recap and ticket links in the file, and the Master Engagement Doc line. If `missing` isn't empty, add its `question` and "Reply in this thread to add them to the recap". If `share_link` is still `pending`, add "Still waiting for the Gong share link: reply here with it to add it to the Master Engagement Doc" | `calls mark --status done --missing <missing, or none> --recap <recap.id> --slack-ts <ts>`; audit lines for the recap Doc and each ticket |
 | `held` | "*<Customer>* recap waiting: <its question> Reply in this thread." | `calls mark --status held --note <needs, comma-separated> --slack-ts <ts> --reminded <today>` |
 | `waiting` | Nothing | Leave it `waiting` for the next run |
 | `error` | "*<Customer>* recap failed: <error>" | `calls mark --status error --note <error>`; the next run doesn't retry it |
@@ -277,6 +302,7 @@ UNATTENDED RUN
 Customer folder: <customers_dir>/<Folder>
 Opportunity: <RECAP_RESULT opportunity, or Not found>
 Recap Doc ID: <RECAP_RESULT recap.id, or the ID in recap.link after /d/>
+Gong share link: <the call's share_link, if it's a link; leave this line out otherwise>
 ```
 
 Read the `SHARED_NOTES_RESULT` block it ends with:
@@ -287,7 +313,8 @@ Read the `SHARED_NOTES_RESULT` block it ends with:
 | `already_there` | Nothing | An activity line |
 | `held` or `error` | "Master Engagement Doc not updated: <reason>" | An activity line with the reason |
 
-Then `calls mark --shared-notes <status>`. Don't retry a `held` or `error` on a later run,
+Then `calls mark --shared-notes <status>`, and add `--share-link-in-doc yes` if the prompt gave
+a share link and the status is `added`. Don't retry a `held` or `error` on a later run,
 except once after the SA's reply fills in the recap (step 3). Never run it in dry-run mode, or
 for a recap that isn't `done`.
 
