@@ -144,9 +144,31 @@ Then, under **NEXT:**
 Both briefs use the customer's name and "LD" instead of "they" or "we", so they read clearly
 when you forward them.
 
+### `customer-shared-notes`
+
+The Doc you share with the customer. You say something like *"Update the Master Engagement Doc
+for Acme"*, or the recap check runs it after each automatic recap. It keeps one Google Doc per
+opportunity, `<Customer>-LaunchDarkly Master Engagement Doc`, in the opportunity's Drive folder:
+
+- **One block per meeting, newest on top,** each with the same sections as the recap: summary,
+  what was discussed, artifacts, scheduled meetings, both sides' action items, and next steps.
+- **Everything internal is left out:** Jira tickets and keys, Salesforce, Vitalstatistix, Slack
+  and internal Drive links, the internal Gong link, internal-only tasks and deal notes. Public
+  docs links stay.
+- **A Gong share link,** if you made one and replied with it in Slack, goes on the meeting's
+  **Recording** line.
+- **It only copies from the recaps** in the Drive folder, never rewording or adding anything. To
+  fix a meeting, fix its recap and ask to refresh that meeting.
+- **It never adds a meeting twice** (a small ledger on your Mac records which recaps are in), and
+  it keeps any edits you or the customer made to the Doc.
+
+The Doc stays private to you: review it, then click **Share** in the Doc and add the customer's
+people yourself.
+
 ### `customer-recap-check`
 
-You set it up once ("set up the recap check"). After that, a scheduled task runs it every hour,
+You set it up once: answer **y** to the installer's last question, or say "set up the recap
+check" in a Code session in your `ai-sa-skills` clone (worktree off, Auto mode). After that, a scheduled task runs it every hour,
 by default from 9:05 to 21:05 on weekdays, and you don't prompt anything. The schedule is the only
 trigger: a call whose Gong email arrives by about 21:00 is recapped the same day, and a later one
 at the first check of the next weekday.
@@ -160,6 +182,10 @@ at the first check of the next weekday.
    other calls make no work. Gong sends one to each
    participant when a call's recording is ready, so it knows you were on the call. It reads only
    the call link, account, date and duration from each email.
+   **For each new call, it posts once in your Slack self-DM** that it saw the meeting, with the
+   internal Gong link, and asks you to create a share link for the customer in Gong (click
+   **Share** on the call) and reply in that thread with it, or reply "no link". Everything later
+   about that call goes in the same thread.
 3. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
    each recap records, so a call is never recapped twice.
 4. **Waits for the full transcript** in Glean, and writes the recap only from it.
@@ -172,11 +198,13 @@ at the first check of the next weekday.
    missing, the meeting is then added to the Master Engagement Doc (which never shows internal
    links).
 6. **Updates the Master Engagement Doc:** after each finished recap, runs `customer-shared-notes`
-   to add the meeting to the opportunity's customer-facing `<Customer> & LaunchDarkly – Meeting
-   Notes` Doc. It runs only once the recap is saved, never in dry-run mode, and never adds a
+   to add the meeting to the opportunity's customer-facing `<Customer>-LaunchDarkly Master
+   Engagement Doc`. It runs only once the recap is saved, never in dry-run mode, and never adds a
    meeting twice.
-7. **Posts to your Slack self-DM:** "recap ready" with the links, including the Master Engagement Doc, or
-   a question you answer by replying in the post's thread. The next run reads your reply and
+7. **Posts in the call's Slack thread:** "recap ready" with the links, including the Master
+   Engagement Doc, or a question you answer by replying in the thread. A Gong share link you
+   reply with is added to that meeting in the Master Engagement Doc (straight away if the meeting
+   is already there, otherwise with the recap), and the check confirms in the thread. The next run reads your reply and
    finishes the call. A Claude notification on your Mac and phone pings you too, since Slack
    doesn't notify you about posts made as you.
 8. **Logs everything** to one Markdown file on your Mac, `~/.config/sa-skills/recap-check-log.md`:
@@ -196,7 +224,7 @@ flowchart TD
     AC --> E[Search for “Gong's call-is-ready” email]
     E --> C{Find Gong account match with an active customer?}
     C -- No --> X([Skip it])
-    C -- Yes --> D{Already recapped?}
+    C -- Yes --> S["Post “Saw the meeting” with the internal Gong link, asking for a customer share link"] --> D{Already recapped?}
     D -- Yes --> X2([Skip it])
     D -- No --> TR{Full transcript in Glean?}
     TR -- Not yet --> W([Wait for the next run])
@@ -209,6 +237,7 @@ flowchart TD
     R["Write recap doc with “Not found” for missing links & create Jira tickets"] --> SN[Add last recap to the “Master Engagement Doc”]
     SN --> P[Post “Recap ready” in self-DM, asking for any missing links]
     P -. you reply .-> U[Save the links to CLAUDE.md, fill them in on the recap doc]
+    S -. you reply with a share link .-> SL[Add it to that meeting in the Master Engagement Doc, and confirm in the thread]
 ```
 
 **Log:** every step is logged as it happens, with its own time, to
@@ -216,7 +245,9 @@ flowchart TD
 one-line summary. Nothing is logged to Drive.
 
 **Replying:** reply in the thread of the post that asked, in your Slack self-DM, with the links.
-Replying "skip" for a link writes `Not found` for it, and it isn't asked for again.
+Replying "skip" for a link writes `Not found` for it, and it isn't asked for again. A Gong share
+link goes in the call's thread too; it's added only to the Master Engagement Doc, never to
+`CLAUDE.md`, the internal recap or the log.
 
 **Not in the diagram:** you can still run `/customer-meeting-recap` yourself at any time, for
 example for a call the check skipped. It asks you for missing links in chat and in your self-DM,
@@ -407,15 +438,17 @@ setup needs the app's Slack and Glean sign-ins. On **y** it:
 1. Shows two Claude Code permission rules and, if you agree, adds them to this clone's
    `.claude/settings.local.json` (on your Mac only, ignored by git). They let **Auto** mode
    delete and create the scheduled task; Auto mode's automatic check blocks that otherwise.
-2. Copies the setup prompt to your clipboard and opens the Claude app.
-3. Tells you what to do there: a new Code session in this clone, worktree off, permission mode
-   **Auto**, then paste the prompt.
+2. Copies the setup prompt to your clipboard (and prints it, in case the copy didn't reach your
+   clipboard), and opens the Claude app.
+3. Tells you what to do there: a **brand-new** Code session (one already open hasn't read the
+   rules) in this clone, worktree off, permission mode **Auto**, then paste the prompt.
 
 Why Auto: the task runs in the folder **and the permission mode** of the session that creates
 it. In Auto, the hourly runs never stop to ask you; in Ask permissions they could wait, unattended,
 for an approval nobody gives. Press **Enter** to skip, and rerun `./install.sh` to turn them on
 later. Run from a temporary worktree, it tells you to use your main clone instead.
-It never asks for, reads or prints a token or secret.
+
+The installer never asks for, reads or prints a token or secret.
 
 **Then sign in, once (about 25 minutes):** follow Parts A and B of
 [ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md):
@@ -559,6 +592,8 @@ Type the skill as a slash command, followed by whatever you have for this call:
 | `/customer-meeting-recap` | After a call: recap Doc + Jira tickets |
 | `/customer-session-prep` | Before a call: one-page prep brief from the current folder's recaps |
 | `/customer-engagement-prep` | Before a call, with the engagement's history: new engagements and accounts you're picking up |
+| `/customer-shared-notes` | After a recap: add it to the customer-facing Master Engagement Doc (the recap check does this for you after each automatic recap) |
+| `/customer-recap-check` | Set up, check on or change the automatic recaps. Usually said in words instead: see step 5 |
 
 You can also just ask ("recap this call", "prep me for Thursday's session") and Claude picks the
 right skill. The slash command makes sure.
@@ -627,8 +662,10 @@ link.
 
 ### 5. Let recaps happen on their own
 
-Once the recap and its links work for a customer, let `customer-recap-check` do it for you. In
-any Claude Code session, say:
+Once the recap and its links work for a customer, let `customer-recap-check` do it for you. Set
+it up from the installer (its last question) or in a Code session in your `ai-sa-skills` clone,
+worktree off, in Auto mode: the scheduled task runs from the folder and in the permission mode of
+the session that creates it. The other requests work in any Claude Code session. Say:
 
 | Say | It does |
 |---|---|
@@ -664,5 +701,5 @@ the next one.
 - **No credentials or personal settings.** They live in each person's `~/.config/`. The
   `.gitignore` blocks common credential files and `CLAUDE.md` as a backstop.
 - **Edit `claude-code/`, then rerun `./install.sh`.** The installed copies are replaced on every
-  install. The master copy uses `{{SKILLS_DIR}}`, `{{CUSTOMERS_DIR}}`, `{{JIRA_SITE}}` and
-  `{{JIRA_PROJECT}}` wherever a personal setting goes; keep those placeholders as they are.
+  install. The master copy uses `{{SKILLS_DIR}}`, `{{CUSTOMERS_DIR}}`, `{{JIRA_SITE}}`,
+  `{{JIRA_PROJECT}}` and `{{HISTORY_DRIVE_FOLDER}}` wherever a personal setting goes; keep those placeholders as they are.
