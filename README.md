@@ -360,7 +360,8 @@ cd ai-sa-skills && python3 claude-code/customer-recap-check/scripts/recap_check.
 
 To change it later, run the same command with the new key, then the installer again.
 
-**3. Run the installer** from the same folder:
+**3. Run the installer** from the same folder, in the Mac's **Terminal** app (it asks
+questions, and copies the last step's prompt to your clipboard):
 
 ```bash
 ./install.sh

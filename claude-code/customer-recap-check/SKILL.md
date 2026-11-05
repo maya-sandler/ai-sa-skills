@@ -79,6 +79,13 @@ Do these in order, telling the SA what each step did.
    - `description`: `Recap new Gong calls with active customers`
    - `notifyOnCompletion`: `false` (the run notifies the SA itself, only when there's news)
    - `prompt`: `Run the customer-recap-check skill for one scheduled check now, following its "Each run" steps exactly. This run is unattended: never ask questions or wait for answers; post to my Slack self-DM as the skill says.`
+
+   Recreating it (the task exists already): `delete_scheduled_task`, then create it as above. A
+   deleted task leaves its folder, `~/.claude/scheduled-tasks/customer-recap-check/`, which blocks
+   reusing the ID. If the create is refused for that, move the folder to
+   `~/.config/sa-skills/old-scheduled-task-<YYYYMMDD-HHMM>/` (it only holds the prompt; never
+   delete it), and create the task again. Keep every setting in
+   `config.json` as it is: don't reset the mode to dry-run, and keep the Drive folder and self-DM.
 6. Tell the SA:
    - The desktop app must be open, and the Mac awake, for a check to run; a missed check runs
      at the next one.
