@@ -232,7 +232,11 @@ the calls left oldest first, at most 5 (with those resumed in step 3). For each:
    result> --out <scratchpad>/<customer>-<date>-transcript.txt`. It writes the transcript and
    prints its length in `minutes`.
 3. **Not ready** (no content, the helper prints an error, or `minutes` is under half the call's
-   `duration`): log "waiting for transcript" and leave it for the next run. First seen more than
+   `duration`): log "waiting for transcript" and leave it for the next run. If the call has no
+   `slack_ts` yet, post once to Slack: "Saw the Gong meeting *<title>* with *<Customer>*
+   (<date>). Waiting for the transcript, and I'll update when the recap is ready." Then
+   `calls mark --id <id> --status waiting --slack-ts <ts>`, so later runs don't post it again.
+   No Claude notification for this post. First seen more than
    2 days ago: post once to Slack ("*<Customer>* call *<title>* (<date>): no transcript in Glean
    after 2 days; recap it by hand"), and `calls mark --status error --note
    "no transcript after 2 days"`.
