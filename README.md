@@ -4,10 +4,10 @@ Claude Code skills that take the busywork out of running customer engagements: p
 
 This repo includes:
 
-- **An installer** (`install.sh`) and a **setup guide** ([ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md)).
+- **An installer** (`install.sh`), with the setup steps in [Install](#install) below.
   The installer asks a few questions, installs the skills with your settings, and creates your
   **Active Customers Doc**, the Google Doc listing the customers the skills use and easy to maintain. 
-  The guide walks you through the Jira and Google Drive sign-ins.
+  [Install](#install) also walks you through the Jira and Google Drive sign-ins.
 - **Two automated workflows**, run by one hourly scheduled task in the Claude desktop app
   (`customer-recap-check`):
   1. **Automatic recaps:** finds Gong's "call is ready" emails for your Active customers, writes
@@ -335,14 +335,18 @@ this `CLAUDE.md` is kept on your computer.
 
 ### Prerequisites
 
-- **Claude Code**, with the **Glean** and **Slack** connectors switched on. In the Claude
-  desktop app, open the connectors settings and check both are connected and on. Glean reads
-  Gong emails and transcripts, Drive, Jira and Salesforce; Slack reads the customer's channels
-  and posts to your self-DM.
+- **Claude Code**, with the **Glean** and **Slack** connectors switched on. In claude.ai,
+  **Settings → Connectors**, check both are connected and enabled for Claude Code:
+
+  | Connector | What the skills use it for |
+  |---|---|
+  | **Glean** | Search and read: Gong's emails in your Gmail, call transcripts, the customer's Drive folder, Jira and Salesforce |
+  | **Slack** | Read channel and read thread (your self-DM, and the customer channels you listed), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts to your self-DM |
 - **Your Gmail comes through Glean,** so no extra API, token or Gmail connector is needed. Your
   company connects Gmail to Glean, and Glean only returns what you can see yourself; the recap
   check uses it to find Gong's "call is ready" emails, and opens no other mail. Check that a
-  Glean search shows your Gmail. (The Google token you create below covers only the Drive files
+  Glean search shows your Gmail, keep those Gong emails on (they are by default), and don't
+  filter them out of your inbox. (The Google token you create below covers only the Drive files
   the skills make, and the Jira token only Jira: neither can read your Gmail.)
 - **macOS** with Homebrew and Python 3 (tested on macOS; Linux should work with small changes).
 - **A Jira project of your own** for customer tasks, plus a **Jira API token**.
@@ -354,8 +358,8 @@ this `CLAUDE.md` is kept on your computer.
 You create **two credentials, once**, one for Jira and one for Google Drive. You never paste
 either into Claude, a chat or this repo: each goes into a private file on your Mac, by a command
 that writes the file for you, and Claude never reads it. The steps are in
-[Jira sign-in, short version](#jira-sign-in-short-version) and
-[Google Drive sign-in, short version](#google-drive-sign-in-short-version) below.
+[Sign in to Jira](#sign-in-to-jira) and [Sign in to Google Drive](#sign-in-to-google-drive)
+below.
 
 | | Jira | Google Drive |
 |---|---|---|
@@ -365,10 +369,17 @@ that writes the file for you, and Claude never reads it. The steps are in
 | What it can reach | What your Jira account can | **Only the Docs the helper created** (Google's `drive.file` permission) |
 | Expires | On the date you choose (up to about a year): then create a new token and repeat both steps | Renews itself |
 
+**Keep them safe:**
+- Never paste the token or the client secret into a Claude chat, and never ask Claude to read
+  `~/.config/acli/token.txt` or anything in `~/.config/sa-skills/google/`. The skills pass them
+  only to `acli` and the Drive helper; they never open them.
+- Keep these files private (`chmod 600`, which the commands below do), outside any git repo, and
+  don't share them. Each person creates their own: a token is what identifies *you*.
+
 Why not simpler options? At many companies the Atlassian MCP connector and `acli`'s browser
 sign-in are blocked by admin policy, and Claude has no Google Drive connector with write access.
-The API token and your own OAuth client are what work. [ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md)
-has the full details, including what we found blocked.
+The API token and your own OAuth client are what work. See
+[What works and what's blocked](#what-works-and-whats-blocked).
 
 ### Run the installer
 
@@ -400,6 +411,8 @@ questions, and copies the last step's prompt to your clipboard):
 ```bash
 ./install.sh
 ```
+
+Run every command in this guide in **your own terminal**, not in the Claude chat box.
 
 It asks these questions. Each one suggests a value: press **Enter** (or type `y`) to keep it.
 
@@ -452,18 +465,16 @@ and the link to your Active Customers Doc. The Doc needs the Google Drive sign-i
 install it's created when you run `./install.sh` again after signing in.
 Your answers are saved in `~/.config/sa-skills/config.json` and offered as defaults next time.
 Rerunning it keeps the settings the skills saved there themselves, such as your Slack self-DM.
+Rerun it any time: to change an answer, or after `git pull` brings newer skills. The commands
+below assume the recommended `~/.claude/skills`; if you chose a project folder, use
+`<project>/.claude/skills` in their place.
 
 The installer never asks for, reads or prints a token or secret.
 
-**Then sign in, once (about 25 minutes):** follow Parts A and B of
-[ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md):
+**Then sign in, once (about 25 minutes),** with the two sections below: Jira (about 10 minutes),
+then Google Drive (about 15). If a step fails, see [Troubleshooting](#troubleshooting).
 
-- **Part A, Jira:** install `acli`, create an API token, save it to a private file, sign in
-  (short version below).
-- **Part B, Google Drive:** create a Google Cloud project and OAuth client, save it with the
-  helper's `setup-client` command (the secret stays hidden as you paste), sign in in the browser.
-
-#### Jira sign-in, short version
+### Sign in to Jira
 
 **1. Install `acli`** (the Atlassian CLI), one command at a time in your terminal:
 
@@ -479,14 +490,20 @@ brew trust atlassian/acli
 brew install acli
 ```
 
-**2. Create an API token** in your Atlassian account's **Security** settings:
-https://id.atlassian.com/manage-profile/security → **Create and manage API tokens** →
+Trusting a Homebrew tap is a security setting, so run these yourself. `brew install` fails with
+"Refusing to load formula … from untrusted tap" until the trust step has worked;
+`brew trust --json=v1` should list `atlassian/acli` under `"taps"`.
+
+**2. Create an API token** in your Atlassian account's **Security** settings (not Jira's
+Personal settings): https://id.atlassian.com/manage-profile/security/api-tokens, or in Jira, your
+profile picture → **Manage account** → **Security** → **Create and manage API tokens**. Click
 **Create API token**. Pick the plain one, not "with scopes": it gets exactly your own Jira
 permissions, and the skills need nothing more than you already have (view and create issues
 in your own project and comment on them). Name it e.g. `acli-claude-code`, pick an expiry date,
 then **Copy**. It's shown only once.
 
-**3. Save it to a private file,** `~/.config/acli/token.txt`, right after clicking Copy:
+**3. Save it to a private file,** `~/.config/acli/token.txt`, right after clicking Copy, before
+you copy anything else:
 
 ```bash
 mkdir -p ~/.config/acli && pbpaste > ~/.config/acli/token.txt && chmod 600 ~/.config/acli/token.txt
@@ -500,7 +517,8 @@ ATATT3xFfGF0Ex4mPleT0kenN0tReal1234567890abcdef=A1B2C3D4
 ```
 
 Check its size without printing it: `wc -c < ~/.config/acli/token.txt` should say about 190.
-Never paste the token into a chat or a repo file.
+A small number like 23 means the clipboard held something else: copy the token again and rerun
+the command. Never paste the token into a chat or a repo file.
 
 **4. Sign `acli` in to Jira.** This uses the token file from step 3, so you never type the token.
 Replace the site and email with yours:
@@ -510,27 +528,28 @@ acli jira auth login --site yourcompany.atlassian.net --email you@yourcompany.co
 ```
 
 You should see `✓ Authentication successful`. `acli` remembers the sign-in, so the skills can create
-and read your tickets from then on; `acli jira auth status` checks it. The full steps, and what to do if one fails, are in
-[ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md), Part A.
+and read your tickets from then on; `acli jira auth status` checks it.
 
-#### Google Drive sign-in, short version
+### Sign in to Google Drive
 
 The skills save Docs to your Drive with their own small app, which you create once in Google
 Cloud. Do these in order, each in your browser with your work Google account:
 
 **1. Create a project:** https://console.cloud.google.com/projectcreate. Name it e.g.
-`ai-sa-skills-<yourname>`, set **Organization** to your company's (not "No organization"), then
-select it in the project picker at the top.
+`ai-sa-skills-<yourname>`, set **Organization** to your company's Google Workspace organization
+(not "No organization"), then select it in the project picker at the top.
 
-**2. Turn on the Drive API:** https://console.cloud.google.com/apis/library/drive.googleapis.com →
-**Enable**.
+**2. Turn on the Drive API:** https://console.cloud.google.com/apis/library/drive.googleapis.com.
+Check that the top bar shows your project, then click **Enable**.
 
 **3. Set up the consent screen:** https://console.cloud.google.com/auth/overview → **Get started**.
 App name `SA skills`, your email as contact, **Audience: Internal** (no Google review needed).
 
 **4. Create the OAuth client:** https://console.cloud.google.com/auth/clients → **Create client** →
 **Desktop app** → **Create**. Keep the dialog open: it shows the **Client ID** (ends in
-`.apps.googleusercontent.com`) and the **Client secret** (starts with `GOCSPX-`).
+`.apps.googleusercontent.com`) and the **Client secret** (starts with `GOCSPX-`, about 35
+characters). Lost the secret? Open the client, click **Add secret** under "Client secrets", and
+copy the new one right away: newer consoles show a secret only once.
 
 **5. Save the client** in your terminal. It asks for the ID, then the secret, which stays hidden
 as you paste:
@@ -551,6 +570,16 @@ values it looks like this; never paste yours into a chat or a repo file:
                "redirect_uris": ["http://localhost"]}}
 ```
 
+To check the secret without showing it, run this. A good one prints `GOCSPX- 35`:
+
+```bash
+python3 -c 'import json,os; s=json.load(open(os.path.expanduser("~/.config/sa-skills/google/client_secret.json")))["installed"]["client_secret"]; print(s[:7], len(s))'
+```
+
+(If you'd rather use Google's **Download JSON** button, save that file as
+`~/.config/sa-skills/google/client_secret.json` and `chmod 600` it. In our test it didn't
+download anything, so `setup-client` is the safer way.)
+
 **6. Sign in:**
 
 ```bash
@@ -560,8 +589,7 @@ values it looks like this; never paste yours into a chat or a repo file:
 A browser opens: pick your work account and click **Allow**. The only permission it asks for is
 "See, edit, create and delete only the specific Google Drive files you use with this app": it can't
 see the rest of your Drive. The terminal prints `{"signed_in_as": "you@yourcompany.com"}`, and the
-sign-in is saved in `~/.config/sa-skills/google/token.json`. Full steps and fixes:
-[ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md), Part B.
+sign-in is saved in `~/.config/sa-skills/google/token.json`.
 
 ### After signing in: Active Customers, dry run, then live
 
@@ -710,12 +738,60 @@ link. It needs Gong's "call is ready" emails turned on (they are by default) and
 read your Gmail. The desktop app must be open and your Mac awake for a check to run; a missed check runs at
 the next one.
 
+## What works and what's blocked
+
+What we found when setting this up (macOS, Claude Code in the desktop app's Code tab). Useful if
+your IT team asks why it's set up this way.
+
+| Access | Status | Notes |
+|---|---|---|
+| **Glean** connector | ✅ Works | Read-only. Reads Gong transcripts, Salesforce, Jira, Google Drive and Slack, limited to what you can see. **Can't create tickets or Docs** |
+| **Jira through `acli` + API token** | ✅ Works | Creates epics and tickets with epic link, due date, assignee and formatted description |
+| **Google Drive through your own OAuth client** | ✅ Works | Creates and updates Google Docs in the customer folder and reads them back |
+| **Gmail through Glean** | ✅ Works | Glean reaches your Gmail live. The recap check uses it only to find Gong's "call recording and analysis is ready" emails |
+| **Slack** connector, posting by file share | ✅ Works | The recap check posts to your self-DM by sharing a small file with a message, and reads your replies. Only the file-upload tools can post |
+| **Slack** connector, reading a customer's channels | ✅ Works | The recap reads only the channels and chats you listed for that customer |
+| Jira through `acli` browser sign-in (`--web`) | ❌ Blocked | Approving in the browser still returns `access_denied`, most likely an admin policy on OAuth apps |
+| Atlassian Rovo MCP connector | ❌ Blocked | Couldn't be connected. Probably the same admin policy |
+| Google Drive connector for Claude | ❌ Not enabled | Not available to Claude at the time of writing. Ask IT if that has changed |
+| Slack connector, plain send-message tool | ❌ Not offered | Not among the connector's tools at the time of writing. The recap check would switch to it |
+| Gong / Salesforce connectors | ➖ Not available | Glean covers both |
+| Gong webhooks | ➖ Not needed | Need a Gong admin and a public endpoint. The recap check reads Gong's emails instead |
+| API keys in `.env` for the desktop app's **Chat tab** | ❌ Won't work | Chats run in the cloud and can't see your Mac's files or tools. That's why these skills run in Claude Code |
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `acli` says `unauthorized` | The Jira token expired or was revoked. Repeat steps 2 to 4 of [Sign in to Jira](#sign-in-to-jira) with a new token, and delete the old one |
+| The Drive helper says `not signed in` | Rerun step 6 of [Sign in to Google Drive](#sign-in-to-google-drive) (`login`) |
+| `invalid_client: The provided client secret is invalid` after clicking Allow | The saved secret doesn't match. Check it with the command in step 5; if it's wrong, add a new secret (step 4), then redo steps 5 and 6 |
+| The Drive helper says the client file is missing | Run step 5 (`setup-client`) |
+| Saving a Doc fails with "can't add files to it" | You need edit access to the customer's Drive folder: ask its owner to make you an editor |
+| No "Create API token" button, or no permission to create a Google Cloud project | Ask your IT team |
+| `brew install acli` says "Refusing to load formula … from untrusted tap" | Run `brew trust atlassian/acli` first (step 1 of [Sign in to Jira](#sign-in-to-jira)) |
+| You can't find `~/.config` in Finder | It's hidden: press ⌘ + Shift + . to show hidden folders, or check from the terminal |
+| Python warns that Python 3.9 is end-of-life | Harmless; the commands' `-W ignore` hides it |
+| "no such file or directory" for a command you stored in a shell variable | zsh doesn't split a variable into words (`G="python script.py"; $G list` fails). Write the command out in full |
+
+**Things we learned about Jira and Drive** (the skills already handle these):
+
+- `acli jira auth login --web` needs keyboard focus in the terminal at the site picker, and is
+  blocked at many companies anyway. `--site` works only with `--email` and `--token`.
+- Jira search can't return `duedate`: use `acli jira workitem view <KEY> --fields duedate`.
+- `acli` can't change a ticket's parent epic after it's created: fix it in the Jira UI, or create
+  the ticket again.
+- To set the epic link and due date when creating a ticket, `acli jira workitem create
+  --from-json` takes `"parentIssueId"` and `"additionalAttributes": {"duedate": "YYYY-MM-DD"}`,
+  and the description must be Atlassian Document Format. `scripts/jira_ticket.py` does all of this.
+- The Drive helper only sees the Docs it created (the `drive.file` permission working as
+  intended). The skills use Glean to read other files in the folder.
+
 ## What's in this repo
 
 | Path | What it is |
 |---|---|
 | `install.sh` | Asks the questions, then installs the skills and the Drive helper's libraries |
-| `ACCESS-AND-SETUP.md` | Full setup: credentials step by step, what works and what's blocked, troubleshooting |
 | `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `scripts/gong_transcript.py` (Gong transcript → readable file), `references/` |
 | `claude-code/customer-session-prep/` | The quick prep skill: `SKILL.md` |
 | `claude-code/customer-engagement-prep/` | The prep skill with the engagement's history: `SKILL.md` |

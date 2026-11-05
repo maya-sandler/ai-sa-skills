@@ -7,7 +7,7 @@
 # Your Jira project key is set once by hand before the first install (see README.md, Install).
 #
 # It never asks for, reads or prints a token or secret. Signing in to Jira and Google is
-# done separately; see ACCESS-AND-SETUP.md.
+# done separately; see README.md, "Sign in to Jira" and "Sign in to Google Drive".
 
 set -euo pipefail
 
@@ -226,13 +226,13 @@ else
 fi
 if command -v acli >/dev/null 2>&1; then
   if acli jira auth status >/dev/null 2>&1; then echo "  ✓ Jira: acli is signed in"
-  else echo "  ✗ Jira: acli isn't signed in. See ACCESS-AND-SETUP.md, Part A (API token)"; fi
+  else echo "  ✗ Jira: acli isn't signed in. See README.md, 'Sign in to Jira'"; fi
 else
-  echo "  ✗ Jira: acli isn't installed. See ACCESS-AND-SETUP.md, Part A"
+  echo "  ✗ Jira: acli isn't installed. See README.md, 'Sign in to Jira'"
 fi
 if [ -f "$CONFIG_DIR/google/token.json" ]; then echo "  ✓ Google Drive: signed in"
-elif [ -f "$CONFIG_DIR/google/client_secret.json" ]; then echo "  ✗ Google Drive: client saved, not signed in yet. See ACCESS-AND-SETUP.md, step B6"
-else echo "  ✗ Google Drive: not set up. See ACCESS-AND-SETUP.md, Part B"; fi
+elif [ -f "$CONFIG_DIR/google/client_secret.json" ]; then echo "  ✗ Google Drive: client saved, not signed in yet. See README.md, 'Sign in to Google Drive', step 6"
+else echo "  ✗ Google Drive: not set up. See README.md, 'Sign in to Google Drive'"; fi
 echo
 echo "Next steps:"
 echo "  1. Go to your Active Customers Doc and update it with your customers. This lets you use"
