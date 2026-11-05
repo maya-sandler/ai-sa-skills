@@ -329,7 +329,8 @@ ai-sa-skills/
     ├── customer-meeting-recap/  (SKILL.md, scripts/jira_ticket.py, scripts/gdrive.py, scripts/gong_transcript.py, references/)
     ├── customer-session-prep/   (SKILL.md)
     ├── customer-engagement-prep/ (SKILL.md)
-    └── customer-recap-check/    (SKILL.md, scripts/recap_check.py), see Part D
+    ├── customer-recap-check/    (SKILL.md, scripts/recap_check.py), see Part D
+    └── customer-shared-notes/   (SKILL.md, scripts/shared_notes.py)
 ```
 
 **To change the skills,** edit the master copy in `claude-code/`, not the installed copy, then
