@@ -407,10 +407,29 @@ It asks these questions. Each one suggests a value: press **Enter** (or type `y`
 | 3 | Confirm your Jira site is `launchdarkly.atlassian.net` | **Enter** to confirm, or type another site | For ticket links |
 | 4 | Your team's shared base Google Drive folder for customer projects (required) | Paste the team folder link, or **Enter** to keep a saved one. Everyone uses the same folder; ask your manager if you don't have it | The skills search it for earlier engagements with a customer |
 | 5 | Your own Google Drive folder, where I'll create your Active Customers Doc | Paste the folder link, **Enter** to keep a saved one, or type `pass` to skip for now | Every customer skill reads the Doc. If you skip it, setting up the recap check asks for the folder |
+| 6 | At the end, after installing: Turn on the automated workflows (the hourly recap check)? | **y** to set it up now (see below), or **Enter** to skip and do it later | The recap check runs as a scheduled task in the Claude desktop app, which the installer can only hand you off to |
 
-Then it shows **"Please confirm your selections"**, with every answer and your Jira project key.
+After question 5 it shows **"Please confirm your selections"**, with every answer and your Jira
+project key.
 Check them, then press **Enter** to install, or type `n` to stop without changing anything.
 An answer that doesn't fit (a "yes" where a folder or site should be) is asked again, never saved.
+
+**Question 6, the automated workflows.** After installing, it asks whether to turn on the
+hourly recap check. A shell script can't create the scheduled task: only a session in the
+Claude desktop app can, and the setup needs the app's Slack and Glean sign-ins. On **y** it:
+
+1. Shows two Claude Code permission rules and, if you agree, adds them to this clone's
+   `.claude/settings.local.json` (on your Mac only, ignored by git). They let **Auto** mode
+   delete and create the scheduled task; Auto mode's automatic check blocks that otherwise.
+2. Copies the setup prompt to your clipboard (and prints it, in case the copy didn't reach your
+   clipboard), and opens the Claude app.
+3. Tells you what to do there: a **brand-new** Code session (one already open hasn't read the
+   rules) in this clone, worktree off, permission mode **Auto**, then paste the prompt.
+
+Why Auto: the task runs in the folder **and the permission mode** of the session that creates
+it. In Auto, the hourly runs never stop to ask you; in Ask permissions they could wait, unattended,
+for an approval nobody gives. Press **Enter** to skip, and rerun `./install.sh` to turn them on
+later. Run from a temporary worktree, it tells you to use your main clone instead.
 
 **What it replaces, and what it leaves alone,** when things already exist (it's safe to rerun):
 
@@ -430,23 +449,6 @@ and the link to your Active Customers Doc. The Doc needs the Google Drive sign-i
 install it's created when you run `./install.sh` again after signing in.
 Your answers are saved in `~/.config/sa-skills/config.json` and offered as defaults next time.
 Rerunning it keeps the settings the skills saved there themselves, such as your Slack self-DM.
-
-**Last, it asks whether to turn on the automated workflows** (the hourly recap check). A shell
-script can't create the scheduled task: only a session in the Claude desktop app can, and the
-setup needs the app's Slack and Glean sign-ins. On **y** it:
-
-1. Shows two Claude Code permission rules and, if you agree, adds them to this clone's
-   `.claude/settings.local.json` (on your Mac only, ignored by git). They let **Auto** mode
-   delete and create the scheduled task; Auto mode's automatic check blocks that otherwise.
-2. Copies the setup prompt to your clipboard (and prints it, in case the copy didn't reach your
-   clipboard), and opens the Claude app.
-3. Tells you what to do there: a **brand-new** Code session (one already open hasn't read the
-   rules) in this clone, worktree off, permission mode **Auto**, then paste the prompt.
-
-Why Auto: the task runs in the folder **and the permission mode** of the session that creates
-it. In Auto, the hourly runs never stop to ask you; in Ask permissions they could wait, unattended,
-for an approval nobody gives. Press **Enter** to skip, and rerun `./install.sh` to turn them on
-later. Run from a temporary worktree, it tells you to use your main clone instead.
 
 The installer never asks for, reads or prints a token or secret.
 
