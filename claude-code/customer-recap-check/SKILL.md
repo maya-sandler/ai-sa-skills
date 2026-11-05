@@ -67,7 +67,12 @@ Do these in order, telling the SA what each step did.
 5. **Schedule.** The task runs in this session's folder, for good, so first check it: it must be
    the SA's clone of the `ai-sa-skills` repo. If it's anywhere else (a customer folder, another
    project), stop and tell the SA to open a session in their `ai-sa-skills` clone and ask again
-   there: a folder that is later moved or deleted stops every run, with no error. Ask which hours to run (suggest every hour, 9:00 to 21:00 on weekdays, so a call that ends by about 20:00 is recapped the same day). Then
+   there: a folder that is later moved or deleted stops every run, with no error. The task also
+   keeps this session's permission mode: it must be **Auto**, so the unattended runs never stop
+   for approval. If the session is in another mode, ask the SA to switch it to Auto first. If Auto
+   mode blocks `delete_scheduled_task` or `create_scheduled_task`, stop and tell the SA to rerun
+   `./install.sh` from the clone and answer y: it offers to add allow rules for those two tools to
+   the clone's `.claude/settings.local.json`. Never work around the block. Ask which hours to run (suggest every hour, 9:00 to 21:00 on weekdays, so a call that ends by about 20:00 is recapped the same day). Then
    create the task with the scheduled-tasks tool `create_scheduled_task`:
    - `taskId`: `customer-recap-check`, `title`: `Customer recap check`
    - `cronExpression`: e.g. `5 9-21 * * 1-5` (five past each hour, in local time)
@@ -79,8 +84,8 @@ Do these in order, telling the SA what each step did.
      at the next one.
    - Gong must email them when a call is ready (Gong's email notifications on, the default),
      and Glean must reach their Gmail. The check reads nothing else in their mail.
-   - On the first runs, approve the tools it uses when asked (Glean, Slack, Bash for the helpers
-     and `acli`), so later runs don't stop for permission.
+   - The runs use Auto mode, the mode this session was in, so they don't stop to ask for
+     permission.
    - It starts in **dry run**: for a week it only reports what it would do. To go live, they
      ask "switch the recap check to live".
 

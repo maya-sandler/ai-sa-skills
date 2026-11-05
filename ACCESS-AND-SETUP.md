@@ -253,9 +253,11 @@ Google Drive, the installer creates the Doc there and prints its link. Otherwise
 check creates it.
 
 **D3. Set it up.** Answer **y** to the installer's last question ("Turn on the automated
-workflows?"): it copies the setup prompt and opens the Claude app. Or, any time, open a Claude
-Code session in **your clone of this repo** (`ai-sa-skills`, worktree off), and say **"set up the
-recap check"**. The scheduled task always runs in the folder of the session
+workflows?"). It offers to add two permission rules to the clone's `.claude/settings.local.json`
+(say yes), copies the setup prompt and opens the Claude app. There, start a Code session in
+**your clone of this repo** (`ai-sa-skills`), worktree off, permission mode **Auto** (the mode
+picker by the message box), and paste the prompt. The task keeps that session's mode, and in
+Auto the hourly runs never stop to ask you. The scheduled task always runs in the folder of the session
 that created it, so create it here, with the skills. Not in a customer folder (those hold only
 each customer's `CLAUDE.md`), and not in a project you might move or delete: if that folder goes
 away, the runs stop with no error. To move the task later, delete it and set it up again from
@@ -269,10 +271,9 @@ here. Setting it up:
 3. Asks which hours to run, then creates an hourly scheduled task in the desktop app.
 4. Starts in **dry-run mode**: for a while it only reports what it would do.
 
-**D4. Approve its tools once.** On the first runs, approve the tools it uses when asked
-(Glean, Slack, and Bash for the helper scripts and `acli`), so later runs don't stop
-for permission. Turn on Claude notifications on your Mac and phone, so you're pinged when a
-recap is ready or a question waits for you.
+**D4. Notifications.** The runs use Auto mode, so they don't stop for approval. Turn on Claude
+notifications on your Mac and phone, so you're pinged when a recap is ready or a question waits
+for you.
 
 **D5. Go live** when the dry runs look right: say **"switch the recap check to live"**.
 

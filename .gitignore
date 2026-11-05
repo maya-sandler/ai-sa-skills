@@ -10,3 +10,7 @@ token*.json
 token.txt
 config.json
 CLAUDE.md
+
+# Claude Code settings for this Mac only (install.sh adds permission rules here), and worktrees.
+.claude/settings.local.json
+.claude/worktrees/

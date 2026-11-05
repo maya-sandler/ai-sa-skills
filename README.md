@@ -401,12 +401,19 @@ Rerunning it keeps the settings the skills saved there themselves, such as your 
 
 **Last, it asks whether to turn on the automated workflows** (the hourly recap check). A shell
 script can't create the scheduled task: only a session in the Claude desktop app can, and the
-setup needs the app's Slack and Glean sign-ins. So on **y** it copies the setup prompt to your
-clipboard, opens the Claude app, and tells you what to do there: start a new Code session in this
-clone (worktree off, permission mode Ask permissions), paste the prompt, and approve the steps.
-The task then runs from this clone for good. Press **Enter** to skip; you can say "set up the
-recap check" in a session here at any time. Run from a temporary worktree, it tells you to use
-your main clone instead.
+setup needs the app's Slack and Glean sign-ins. On **y** it:
+
+1. Shows two Claude Code permission rules and, if you agree, adds them to this clone's
+   `.claude/settings.local.json` (on your Mac only, ignored by git). They let **Auto** mode
+   delete and create the scheduled task; Auto mode's automatic check blocks that otherwise.
+2. Copies the setup prompt to your clipboard and opens the Claude app.
+3. Tells you what to do there: a new Code session in this clone, worktree off, permission mode
+   **Auto**, then paste the prompt.
+
+Why Auto: the task runs in the folder **and the permission mode** of the session that creates
+it. In Auto, the hourly runs never stop to ask you; in Ask permissions they could wait, unattended,
+for an approval nobody gives. Press **Enter** to skip, and rerun `./install.sh` to turn them on
+later. Run from a temporary worktree, it tells you to use your main clone instead.
 It never asks for, reads or prints a token or secret.
 
 **Then sign in, once (about 25 minutes):** follow Parts A and B of
