@@ -78,7 +78,7 @@ def credentials(interactive):
         if not interactive:
             fail("not signed in to Google Drive: run gdrive.py login")
         if not os.path.exists(CLIENT_SECRET):
-            fail("missing %s: see ACCESS-AND-SETUP.md, Google Drive section" % CLIENT_SECRET)
+            fail("missing %s: see README.md, 'Sign in to Google Drive', step 5" % CLIENT_SECRET)
         creds = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET, SCOPES).run_local_server(port=0)
     os.makedirs(CONFIG_DIR, exist_ok=True)
     fd = os.open(TOKEN, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
