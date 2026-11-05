@@ -439,8 +439,10 @@ Claude desktop app can, and the setup needs the app's Slack and Glean sign-ins. 
    delete and create the scheduled task; Auto mode's automatic check blocks that otherwise.
 2. Copies the setup prompt to your clipboard (and prints it, in case the copy didn't reach your
    clipboard), and opens the Claude app.
-3. Tells you what to do there: a **brand-new** Code session (one already open hasn't read the
-   rules) in this clone, worktree off, permission mode **Auto**, then paste the prompt.
+3. Tells you what to do there, in order: start a **brand-new** Code session (one already open
+   hasn't read the rules) in your `ai-sa-skills` folder, with the worktree off; switch its
+   permission mode to **Auto** before you send anything (the prompt can't change the mode for
+   you); then paste the prompt and send it.
 
 Why Auto: the task runs in the folder **and the permission mode** of the session that creates
 it. In Auto, the hourly runs never stop to ask you; in Ask permissions they could wait, unattended,
