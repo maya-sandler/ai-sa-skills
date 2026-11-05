@@ -351,16 +351,19 @@ this `CLAUDE.md` is kept on your computer.
 
 #### About the credentials
 
-You create **two credentials, once**. Neither is an API key you paste anywhere: both stay in
-private files on your computer, and Claude never reads them.
+You create **two credentials, once**, one for Jira and one for Google Drive. You never paste
+either into Claude, a chat or this repo: each goes into a private file on your Mac, by a command
+that writes the file for you, and Claude never reads it. The steps are in
+[Jira sign-in, short version](#jira-sign-in-short-version) and
+[Google Drive sign-in, short version](#google-drive-sign-in-short-version) below.
 
 | | Jira | Google Drive |
 |---|---|---|
-| What it is | An **API token** from your Atlassian account | An **OAuth client** (Client ID + secret) from your own Google Cloud project |
-| How it's used | `acli` signs in with it once, using your email | You sign in once in the browser; that creates a token the helper reuses |
-| Where it's kept | `~/.config/acli/token.txt` | `~/.config/sa-skills/google/` |
+| What you create | An **API token** in your Atlassian account's Security settings | An **OAuth client** (a Client ID and a Client secret) in your own Google Cloud project. There's no Google API key or token to create |
+| Where you put it | Copy the token, then run one command that saves your clipboard to **`~/.config/acli/token.txt`** (readable only by you). You don't create or open the file yourself | Run the Drive helper's **`setup-client`** command and paste the Client ID, then the Client secret, when it asks (the secret stays hidden). It writes **`~/.config/sa-skills/google/client_secret.json`** for you |
+| Then | Run `acli jira auth login ... --token < ~/.config/acli/token.txt`, which reads the token from the file, so you never type it | Run the helper's **`login`** command and click **Allow** in the browser. That saves **`~/.config/sa-skills/google/token.json`**, which the helper reuses |
 | What it can reach | What your Jira account can | **Only the Docs the helper created** (Google's `drive.file` permission) |
-| Expires | On the date you choose (up to about a year) | Renews itself |
+| Expires | On the date you choose (up to about a year): then create a new token and repeat both steps | Renews itself |
 
 Why not simpler options? At many companies the Atlassian MCP connector and `acli`'s browser
 sign-in are blocked by admin policy, and Claude has no Google Drive connector with write access.
