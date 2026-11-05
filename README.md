@@ -563,9 +563,33 @@ see the rest of your Drive. The terminal prints `{"signed_in_as": "you@yourcompa
 sign-in is saved in `~/.config/sa-skills/google/token.json`. Full steps and fixes:
 [ACCESS-AND-SETUP.md](ACCESS-AND-SETUP.md), Part B.
 
-Run `./install.sh` again afterwards: it fills in your Jira site for you, shows that both
-sign-ins are done, and creates your Active Customers Doc. Open it from the link it prints and add
-a row per customer, marked Active.
+### After signing in: Active Customers, dry run, then live
+
+Do these in order. The recap check needs both sign-ins and your Active Customers Doc, so turn it
+on in step 2, not on the very first install (skip question 6 then, with **Enter**).
+
+**1. Run `./install.sh` again.** It fills in your Jira site for you, shows that both sign-ins
+are done, and creates your Active Customers Doc. Open it from the link it prints and add a row
+per customer, marked Active, with its Gong account and Drive folder link.
+
+**2. Turn on the recap check.** Still in that install, answer **y** to question 6 and follow its
+steps (a brand-new Code session in this clone, worktree off, Auto mode, paste the prompt). The
+check starts in **dry-run mode**: it writes nothing and only tells you what it would do.
+
+**3. Check the dry run.** For your next few customer calls, look in your Slack self-DM after each
+hourly run. For each call it should post "Dry run: Saw the Gong meeting…", then "Dry run: would recap
+*\<title\>* with \<Customer\>…; links missing: …". Not waiting for a call? Say **"run the recap
+check now"** in a Code session in this clone, to run one check right away (still a dry run).
+
+| What you see | What to fix |
+|---|---|
+| Nothing for a call you were on | The row's **Gong account** must be exactly the account name Gong shows, and Status **Active** |
+| "links missing: …" | Add the missing links to the customer's `CLAUDE.md`, or reply in the thread once live |
+| No posts at all | The desktop app must be open and your Mac awake. Say "what did the recap check do today?" to read the run log |
+
+**4. Go live** when the dry runs look right: say **"switch the recap check to live"** in any Code
+session. From then on it writes the recaps, creates the Jira tickets and updates the Master
+Engagement Doc. Calls the dry run reported in the last 2 days are recapped for real.
 
 ## How to use it best
 
