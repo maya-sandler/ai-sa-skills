@@ -384,7 +384,7 @@ An answer that doesn't fit (a "yes" where a folder or site should be) is asked a
 
 | Already there | What the installer does |
 |---|---|
-| The installed skills it installs (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`, `customer-recap-check`) in the skills folder | **Replaced** with this repo's copy. Any edits you made to the installed copy are lost: edit `claude-code/` instead |
+| The installed skills it installs (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`, `customer-recap-check`, `customer-shared-notes`) in the skills folder | **Replaced** with this repo's copy. Any edits you made to the installed copy are lost: edit `claude-code/` instead |
 | Other skills in the same skills folder | Left alone |
 | Your customer folders and each customer's `CLAUDE.md` | Left alone. It only creates the top folder if it's missing |
 | `~/.config/sa-skills/config.json` | Your answers are updated; everything else in it (Jira project key, Slack self-DM, recap check mode) is kept |
@@ -398,6 +398,15 @@ and the link to your Active Customers Doc. The Doc needs the Google Drive sign-i
 install it's created when you run `./install.sh` again after signing in.
 Your answers are saved in `~/.config/sa-skills/config.json` and offered as defaults next time.
 Rerunning it keeps the settings the skills saved there themselves, such as your Slack self-DM.
+
+**Last, it asks whether to turn on the automated workflows** (the hourly recap check). A shell
+script can't create the scheduled task: only a session in the Claude desktop app can, and the
+setup needs the app's Slack and Glean sign-ins. So on **y** it copies the setup prompt to your
+clipboard, opens the Claude app, and tells you what to do there: start a new Code session in this
+clone (worktree off, permission mode Ask permissions), paste the prompt, and approve the steps.
+The task then runs from this clone for good. Press **Enter** to skip; you can say "set up the
+recap check" in a session here at any time. Run from a temporary worktree, it tells you to use
+your main clone instead.
 It never asks for, reads or prints a token or secret.
 
 **Then sign in, once (about 25 minutes):** follow Parts A and B of

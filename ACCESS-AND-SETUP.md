@@ -252,8 +252,10 @@ reads. You need edit access to it. Give it to `install.sh` (its last question): 
 Google Drive, the installer creates the Doc there and prints its link. Otherwise setting up the
 check creates it.
 
-**D3. Set it up.** Open a Claude Code session in **your clone of this repo** (`ai-sa-skills`),
-and say **"set up the recap check"**. The scheduled task always runs in the folder of the session
+**D3. Set it up.** Answer **y** to the installer's last question ("Turn on the automated
+workflows?"): it copies the setup prompt and opens the Claude app. Or, any time, open a Claude
+Code session in **your clone of this repo** (`ai-sa-skills`, worktree off), and say **"set up the
+recap check"**. The scheduled task always runs in the folder of the session
 that created it, so create it here, with the skills. Not in a customer folder (those hold only
 each customer's `CLAUDE.md`), and not in a project you might move or delete: if that folder goes
 away, the runs stop with no error. To move the task later, delete it and set it up again from

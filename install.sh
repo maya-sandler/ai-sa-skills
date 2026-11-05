@@ -238,3 +238,34 @@ echo "Next steps:"
 echo "  1. Go to your Active Customers Doc and update it with your customers. This lets you use"
 echo "     the skills and the automatic recaps.${doc:+ $doc}"
 echo "  2. Open a Claude Code session and call the skills 🙂"
+
+# 8. The automated workflows. A shell script can't create a scheduled task: only a session in
+# the Claude desktop app can, with its scheduled-tasks tool (and the setup needs the app's Slack
+# and Glean sign-ins). So this only gets you there: it copies the setup prompt and opens the app.
+# The task runs, for good, in the folder of the session that creates it: this clone.
+here_t="$(tilde "$HERE")"
+setup_prompt="Set up the recap check (the customer-recap-check skill) from this folder. If a scheduled task named customer-recap-check already exists, delete it and create it again from here, with the same schedule. Keep the settings I already have (mode, Drive folder, Slack self-DM). Don't run the check yourself."
+echo
+read -r -p "Turn on the automated workflows (the hourly recap check)? Type y for yes, Enter to skip: " auto
+case "$(printf '%s' "${auto:-n}" | tr '[:upper:]' '[:lower:]')" in
+  y|yes)
+    case "$HERE" in
+      */.claude/worktrees/*)
+        echo "  ✗ This copy is a temporary worktree ($here_t). Run ./install.sh from your main"
+        echo "    ai-sa-skills clone and answer y there: the task must not run from a folder that goes away." ;;
+      *)
+        copied=""; opened=""
+        if command -v pbcopy >/dev/null 2>&1 && printf '%s' "$setup_prompt" | pbcopy; then copied=1; fi
+        if command -v open >/dev/null 2>&1 && open -a Claude >/dev/null 2>&1; then opened=1; fi
+        echo "  ${opened:+✓ Opened the Claude app. }Now, in the app:"
+        echo "  1. Start a new Code session in $here_t, with the worktree OFF and the"
+        echo "     permission mode set to Ask permissions (so you approve each step)."
+        if [ -n "$copied" ]; then echo "  2. Paste the setup prompt (it's on your clipboard) and send it."
+        else echo "  2. Send this prompt:"; echo "       $setup_prompt"; fi
+        echo "  3. Answer its questions (which hours to run) and approve the tools it asks for."
+        if [ "$(saved recap_check_mode)" = "live" ]; then echo "  Your recap check stays live."
+        else echo "  It starts in dry-run mode. When its reports look right, say \"switch the recap check to live\"."; fi ;;
+    esac ;;
+  *)
+    echo "  Skipped. To turn them on later, open a Code session in $here_t and say \"set up the recap check\"." ;;
+esac
