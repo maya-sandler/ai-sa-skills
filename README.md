@@ -447,6 +447,11 @@ it. In Auto, the hourly runs never stop to ask you; in Ask permissions they coul
 for an approval nobody gives. Press **Enter** to skip, and rerun `./install.sh` to turn them on
 later. Run from a temporary worktree, it tells you to use your main clone instead.
 
+**Already set up the recap check? Press Enter at question 6.** The scheduled task keeps running
+as it is when you rerun `./install.sh`, so you don't need the setup prompt again. You only need it
+again if the task is deleted, you move or re-clone this folder (the task runs from it), or you
+want the runs in another permission mode. To change the hours or pause it, just ask Claude.
+
 To pick Auto, click the permission mode next to the model name under the message box, and
 choose **Auto**:
 
@@ -462,6 +467,7 @@ choose **Auto**:
 | `~/.config/sa-skills/config.json` | Your answers are updated; everything else in it (Jira project key, Slack self-DM, recap check mode) is kept |
 | The processed-calls log, run log and shared-notes ledger in `~/.config/sa-skills/` | Left alone |
 | Your Active Customers Doc | Left alone: it finds the Doc already in the folder instead of making a second one |
+| The scheduled recap check task | Left alone: the installer can't change it. Press **Enter** at question 6; there's no need to paste the setup prompt again |
 | Google and Jira sign-ins | Never read or changed |
 | The Drive helper's Python libraries | Reused; only missing ones are installed |
 
