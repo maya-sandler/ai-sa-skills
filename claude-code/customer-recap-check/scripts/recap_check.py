@@ -191,6 +191,9 @@ def customer_row(row):
     folder = get("folder link", "folder")
     folder_url = (URL.findall(folder) or [""])[0]
     folder_id = re.search(r"/folders/([A-Za-z0-9_-]+)", folder_url)
+    if folder_id:
+        # Drop Drive's sharing suffix (?usp=drive_link), so the same folder is always the same link.
+        folder_url = "https://drive.google.com/drive/folders/" + folder_id.group(1)
     salesforce = get("salesforce opportunity", "salesforce")
     slack = get("slack channels", "slack")
     return {
@@ -200,7 +203,8 @@ def customer_row(row):
         "folder_id": folder_id.group(1) if folder_id else "",
         "salesforce_link": (URL.findall(salesforce) or [""])[0],
         "local_folder": slug(customer),
-        "slack_channels": "none" if slack.strip().lower() == "none" else URL.findall(slack),
+        # A channel pasted twice in the Doc is listed once.
+        "slack_channels": "none" if slack.strip().lower() == "none" else list(dict.fromkeys(URL.findall(slack))),
         "gong_account": get("gong account"),
         "status": get("status"),
         "active": get("status").strip().lower() == "active",
