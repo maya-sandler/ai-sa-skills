@@ -26,11 +26,12 @@ Commands (every one prints JSON):
   calls mark --id CALL_ID --status S [--customer C] [--date D] [--title T] [--url U]
              [--duration D] [--note N] [--slack-ts TS] [--missing LINKS|none] [--reminded YYYY-MM-DD]
              [--recap DOC_ID] [--shared-notes added|already_there|held|error]
+             [--share-link pending|none|URL] [--share-link-in-doc yes]
                                         record a call: waiting, done, held, skipped, error or dry-run
   calls waiting                         calls whose Gong email came in, still to be recapped
                                         (status waiting, or dry-run)
-  calls held                            calls waiting for an answer in Slack: held, or done with
-                                        links still missing
+  calls held                            calls waiting for an answer in Slack: held, done with
+                                        links still missing, or still waiting for a Gong share link
 
   log add --kind activity|audit --run RUN_ID --text TEXT [--dry-run]
                                         append one line, stamped with the current time, to the
@@ -320,7 +321,8 @@ def cmd_calls(a):
         return
     if a.action == "held":
         out({k: v for k, v in calls.items() if v.get("status") == "held"
-             or (v.get("status") == "done" and v.get("missing"))})
+             or (v.get("status") == "done" and v.get("missing"))
+             or v.get("share_link") == "pending"})
         return
     if a.status not in STATUSES:
         fail("status must be one of %s" % ", ".join(STATUSES))
@@ -329,7 +331,9 @@ def cmd_calls(a):
                                     ("title", a.title), ("url", a.url), ("duration", a.duration),
                                     ("note", a.note),
                                     ("slack_ts", a.slack_ts), ("reminded", a.reminded),
-                                    ("recap", a.recap), ("shared_notes", a.shared_notes)) if v})
+                                    ("recap", a.recap), ("shared_notes", a.shared_notes),
+                                    ("share_link", a.share_link),
+                                    ("share_link_in_doc", a.share_link_in_doc)) if v})
     if a.missing:
         entry["missing"] = [] if a.missing == "none" else [m.strip() for m in a.missing.split(",") if m.strip()]
     entry.setdefault("first_seen", datetime.datetime.now().isoformat(timespec="seconds"))
@@ -483,7 +487,7 @@ def main():
     ca.add_argument("action", choices=["get", "mark", "waiting", "held"])
     ca.add_argument("--id")
     for opt in ("--status", "--customer", "--date", "--title", "--url", "--duration", "--note", "--slack-ts",
-                "--missing", "--reminded", "--recap", "--shared-notes"):
+                "--missing", "--reminded", "--recap", "--shared-notes", "--share-link", "--share-link-in-doc"):
         ca.add_argument(opt)
 
     lg = sub.add_parser("log")

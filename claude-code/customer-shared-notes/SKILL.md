@@ -79,6 +79,14 @@ overrides any step that says to ask the SA:
 - **The Doc exists:** add only the recap the prompt names. If the ledger or a heading says it's
   already there, change nothing and return `already_there`.
 - **Never refresh a meeting** in an unattended run.
+- **A Gong share link in the prompt** (`Gong share link:`) goes in that meeting's block, as Step 4
+  says. It's the only Gong link the Doc may hold: the SA made it for the customer.
+- **`UNATTENDED RUN, SHARE LINK`:** the meeting is already in the Doc, and the SA has just made
+  its share link. Find the Doc (Step 1 and Step 3), `read` it, and find that meeting's block: the
+  heading with the prompt's date and title, as in Step 3 (or the only heading with that date).
+  Put `**Recording:** <link>` on the line after the heading, replacing any `**Recording:**` line
+  already there, and change nothing else. Save it (Step 5) and return `added`, with the meeting in
+  `meetings_added`. No block for that meeting: write nothing, and return `held`.
 - **Post nothing in chat.** End with the result block below, and nothing after it.
 
 End every unattended run with exactly one block like this:
@@ -181,6 +189,8 @@ Each meeting gets this block, with exactly these sections, in this order:
 ```
 ## <YYYY-MM-DD> – <meeting title>
 
+**Recording:** <Gong share link, only if the prompt gives one; otherwise leave this line out>
+
 ### Summary
 ### What was discussed
 ### Artifacts & resources
@@ -207,7 +217,7 @@ Copy each section from the recap's section of the same name, with these changes:
 
 **Leave out everything internal:**
 - **Jira:** the Jira column, and any ticket key like `{{JIRA_PROJECT}}-123`.
-- **Internal links:** Salesforce, Vitalstatistix, Jira, Slack, the Gong recording and call ID,
+- **Internal links:** Salesforce, Vitalstatistix, Jira, Slack, the internal Gong recording link and call ID,
   the session plan, the SA handoff, and any other Google Doc or Drive link, unless the recap
   says that file was shared with the customer. Keep confirmed public docs links
   (`https://launchdarkly.com/docs/...`) and other public pages.
@@ -231,8 +241,9 @@ for anything internal you missed:
 grep -n -i -E 'gong|lightning\.force\.com|salesforce|vitalstatistix|atlassian\.net|slack\.com|docs\.google\.com|drive\.google\.com|session plan|handoff|not found|\b{{JIRA_PROJECT}}-[0-9]+' <scratchpad>/new-blocks.md
 ```
 
-Fix every hit, unless it's something the customer was clearly given in the meeting. Check only
-your new blocks, not the SA's text in the existing Doc.
+Fix every hit, unless it's something the customer was clearly given in the meeting, or the
+`**Recording:**` line with the share link from the prompt. Check only your new blocks, not the
+SA's text in the existing Doc.
 
 ## Step 5: Put the Doc together and save it
 
