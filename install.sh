@@ -294,17 +294,20 @@ PY
           && [ "$(pbpaste 2>/dev/null)" = "$setup_prompt" ]; then copied=1; fi
         if command -v open >/dev/null 2>&1 && open -a Claude >/dev/null 2>&1; then opened=1; fi
         echo
-        echo "  Last step, in the Claude desktop app${opened:+ (now open)}:"
-        echo "  1. Start a brand-new Code session, now that the installer is done: a session reads"
-        echo "     the two rules only when it starts. Don't reuse a session that was already open."
-        echo "  2. Its folder, with the worktree OFF: $here_t"
-        echo "     The task runs from this folder for good; a worktree is a temporary copy that gets"
-        echo "     cleaned up."
-        echo "  3. Its permission mode: Auto (the mode picker by the message box). The rules only let"
-        echo "     this session create the task. The task keeps this session's mode, and the hourly runs"
-        echo "     use Slack, Glean, Drive, Jira and Bash: in Auto they never stop to ask you."
-        if [ -n "$copied" ]; then echo "  4. Paste the setup prompt (it's on your clipboard) and send it. Here it is too:"
-        else echo "  4. Copy this setup prompt and send it:"; fi
+        echo "  Last step, in the Claude desktop app${opened:+ (now open)}. Set up a new session first,"
+        echo "  then send the prompt:"
+        echo "  1. Start a brand-new Code session (not one that was already open: a session only reads"
+        echo "     the two rules when it starts)."
+        echo "  2. Choose your ai-sa-skills folder, the one you ran this installer from:"
+        echo "       $here_t"
+        echo "     Choose the folder itself, with the worktree option OFF. The scheduled task runs from"
+        echo "     this folder for good, and a worktree is a temporary copy that gets cleaned up."
+        echo "  3. Before you send anything, switch the session's permission mode to Auto: open the"
+        echo "     permission mode menu by the message box and pick Auto. The prompt can't do this for"
+        echo "     you: the task is saved in the mode the session is in, and only in Auto do the"
+        echo "     hourly runs never stop to ask you. (If you forget, the setup asks you to switch.)"
+        if [ -n "$copied" ]; then echo "  4. Now paste the setup prompt (it's on your clipboard) and send it. Here it is too:"
+        else echo "  4. Now copy this setup prompt and send it:"; fi
         echo
         echo "     $setup_prompt"
         echo
