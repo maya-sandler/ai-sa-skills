@@ -254,10 +254,11 @@ check creates it.
 
 **D3. Set it up.** Answer **y** to the installer's last question ("Turn on the automated
 workflows?"). It offers to add two permission rules to the clone's `.claude/settings.local.json`
-(say yes), copies the setup prompt and opens the Claude app. There, start a Code session in
-**your clone of this repo** (`ai-sa-skills`), worktree off, permission mode **Auto** (the mode
-picker by the message box), and paste the prompt. The task keeps that session's mode, and in
-Auto the hourly runs never stop to ask you. The scheduled task always runs in the folder of the session
+(say yes), copies the setup prompt, prints it too, and opens the Claude app. There, start a
+**brand-new** Code session (one already open hasn't read the new rules) in **your clone of this
+repo** (`ai-sa-skills`), worktree off, permission mode **Auto** (the mode picker by the message
+box), and paste the prompt. The rules only let that session create the task. The task keeps that
+session's mode, and in Auto the hourly runs never stop to ask you. The scheduled task always runs in the folder of the session
 that created it, so create it here, with the skills. Not in a customer folder (those hold only
 each customer's `CLAUDE.md`), and not in a project you might move or delete: if that folder goes
 away, the runs stop with no error. To move the task later, delete it and set it up again from

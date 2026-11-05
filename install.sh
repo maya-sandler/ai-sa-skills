@@ -258,8 +258,8 @@ case "$(printf '%s' "${auto:-n}" | tr '[:upper:]' '[:lower:]')" in
         echo "  ✗ This copy is a temporary worktree ($here_t). Run ./install.sh from your main"
         echo "    ai-sa-skills clone and answer y there: the task must not run from a folder that goes away." ;;
       *)
-        echo "  The setup session runs in Auto mode, and Auto mode blocks creating a scheduled task unless"
-        echo "  you allow it. These two Claude Code permission rules allow it, only in sessions in this clone:"
+        echo "  The setup session runs in Auto mode, which blocks creating a scheduled task unless you allow it."
+        echo "  These two Claude Code permission rules allow it, only in sessions in this clone:"
         for r in "${task_rules[@]}"; do echo "    $r"; done
         echo "  They go in $(tilde "$local_settings") (on this Mac only, never committed)."
         read -r -p "  Add them? Press Enter or type y to add, n to skip: " add_rules
@@ -286,16 +286,29 @@ PY
         else
           echo "  Skipped. Without them, Auto mode may block the setup session from creating the task."
         fi
+        # Copy the prompt, and say so only if the clipboard really holds it (a terminal inside an
+        # app or over SSH can accept pbcopy without reaching the Mac's clipboard).
         copied=""; opened=""
-        if command -v pbcopy >/dev/null 2>&1 && printf '%s' "$setup_prompt" | pbcopy; then copied=1; fi
+        if command -v pbcopy >/dev/null 2>&1 && command -v pbpaste >/dev/null 2>&1 \
+          && printf '%s' "$setup_prompt" | pbcopy 2>/dev/null \
+          && [ "$(pbpaste 2>/dev/null)" = "$setup_prompt" ]; then copied=1; fi
         if command -v open >/dev/null 2>&1 && open -a Claude >/dev/null 2>&1; then opened=1; fi
-        echo "  ${opened:+✓ Opened the Claude app. }Now, in the app:"
-        echo "  1. Start a new Code session in $here_t, with the worktree OFF."
-        echo "  2. Set its permission mode to Auto (the mode picker by the message box). The hourly"
-        echo "     runs use the mode the task is created in, and in Auto they never stop to ask you."
-        if [ -n "$copied" ]; then echo "  3. Paste the setup prompt (it's on your clipboard) and send it."
-        else echo "  3. Send this prompt:"; echo "       $setup_prompt"; fi
-        echo "  4. Answer its questions (which hours to run)."
+        echo
+        echo "  Last step, in the Claude desktop app${opened:+ (now open)}:"
+        echo "  1. Start a brand-new Code session, now that the installer is done: a session reads"
+        echo "     the two rules only when it starts. Don't reuse a session that was already open."
+        echo "  2. Its folder, with the worktree OFF: $here_t"
+        echo "     The task runs from this folder for good; a worktree is a temporary copy that gets"
+        echo "     cleaned up."
+        echo "  3. Its permission mode: Auto (the mode picker by the message box). The rules only let"
+        echo "     this session create the task. The task keeps this session's mode, and the hourly runs"
+        echo "     use Slack, Glean, Drive, Jira and Bash: in Auto they never stop to ask you."
+        if [ -n "$copied" ]; then echo "  4. Paste the setup prompt (it's on your clipboard) and send it. Here it is too:"
+        else echo "  4. Copy this setup prompt and send it:"; fi
+        echo
+        echo "     $setup_prompt"
+        echo
+        echo "  5. Answer its questions (which hours to run). It tells you when the task is created."
         if [ "$(saved recap_check_mode)" = "live" ]; then echo "  Your recap check stays live."
         else echo "  It starts in dry-run mode. When its reports look right, say \"switch the recap check to live\"."; fi ;;
     esac ;;
