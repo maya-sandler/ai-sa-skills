@@ -447,6 +447,11 @@ it. In Auto, the hourly runs never stop to ask you; in Ask permissions they coul
 for an approval nobody gives. Press **Enter** to skip, and rerun `./install.sh` to turn them on
 later. Run from a temporary worktree, it tells you to use your main clone instead.
 
+To pick Auto, click the permission mode next to the model name under the message box, and
+choose **Auto**:
+
+<img src="docs/images/auto-mode.png" alt="The Claude desktop app's message box, with the model (Opus 5.5), effort (Medium) and permission mode (Auto) under it" width="400">
+
 **What it replaces, and what it leaves alone,** when things already exist (it's safe to rerun):
 
 | Already there | What the installer does |
