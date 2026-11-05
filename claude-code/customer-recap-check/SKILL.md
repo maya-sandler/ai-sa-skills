@@ -64,7 +64,10 @@ Do these in order, telling the SA what each step did.
    customer skill reads it, as the recap skill's "Active Customers Doc" section says.
 3. **Slack self-DM.** Find it as "Slack self-DM" below describes, and save it.
 4. **Mode.** Set `config set recap_check_mode dry-run` unless the SA asks for live.
-5. **Schedule.** Ask which hours to run (suggest every hour, 9:00 to 21:00 on weekdays, so a call that ends by about 20:00 is recapped the same day). Then
+5. **Schedule.** The task runs in this session's folder, for good, so first check it: it must be
+   the SA's clone of the `ai-sa-skills` repo. If it's anywhere else (a customer folder, another
+   project), stop and tell the SA to open a session in their `ai-sa-skills` clone and ask again
+   there: a folder that is later moved or deleted stops every run, with no error. Ask which hours to run (suggest every hour, 9:00 to 21:00 on weekdays, so a call that ends by about 20:00 is recapped the same day). Then
    create the task with the scheduled-tasks tool `create_scheduled_task`:
    - `taskId`: `customer-recap-check`, `title`: `Customer recap check`
    - `cronExpression`: e.g. `5 9-21 * * 1-5` (five past each hour, in local time)
