@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Install the SA customer skills for Claude Code.
 #
-# Asks where the skills and your customer folders should live and which Jira site to use,
-# fills those into the skills, installs them, and sets up the Drive helper's Python libraries. Safe to run again:
+# Asks where the skills and your customer folders should live, which Jira site to use, and your
+# Drive folders (the team's base folder, your own, and your Misc folder for internal meeting
+# preps), fills those into the skills, installs them, and sets up the Drive helper's Python libraries. Safe to run again:
 # it remembers your answers (in ~/.config/sa-skills/config.json) and offers them as defaults.
 # Your Jira project key is set once by hand before the first install (see README.md, Install).
 #
@@ -145,6 +146,33 @@ while :; do
 done
 sa_drive_folder="$sa_folder"
 
+# 3d. Your Misc Drive folder, where meeting prep saves internal (LD-only) meeting preps, in an
+# "Internal Preps" folder it creates. The Drive helper can't find a folder it didn't create, so
+# it needs the link. Optional: the first internal meeting asks for it in Slack.
+prev_misc="$(saved misc_drive_folder)"
+printf '%s' "$prev_misc" | grep -Eq '^[A-Za-z0-9_-]{10,}$' || prev_misc=""  # ignore a bad saved answer
+echo
+echo "Your Misc folder in Google Drive. Meeting prep saves internal meeting preps (meetings about a"
+echo "customer with only LaunchDarkly people) in an Internal Preps folder it creates inside it."
+if [ -n "$prev_misc" ]; then
+  echo "  Saved folder: https://drive.google.com/drive/folders/$prev_misc"
+  prompt="Press Enter to keep the saved folder, paste another folder link, or type pass to skip for now: "
+else
+  prompt="Paste your Misc folder link, or type pass to skip for now (the check asks in Slack later): "
+fi
+while :; do
+  read -r -p "$prompt" misc
+  case "$misc" in
+    ""|y|Y|yes|YES|Yes) [ -n "$prev_misc" ] || { echo "  Paste a folder link, or type pass."; continue; }
+      misc="$prev_misc"; break ;;
+    pass|PASS|Pass) misc=""; break ;;
+    https://drive.google.com/*/folders/*)
+      misc="${misc%%\?*}"; misc="${misc##*/folders/}"; misc="${misc%%/*}"; break ;;
+  esac
+  echo "  Paste a Google Drive folder link (https://drive.google.com/drive/folders/...), or type pass."
+done
+misc_drive_folder="$misc"
+
 skills_t="$(tilde "$skills_dir")"
 customers_t="$(tilde "$customers_dir")"
 echo
@@ -154,6 +182,7 @@ echo "Customer folders: $customers_t"
 echo "Jira:             project $jira_project on $jira_site"
 echo "History folder:   $history_drive_folder"
 echo "Your Drive folder: ${sa_drive_folder:-none (skipped)}"
+echo "Misc folder:      ${misc_drive_folder:-none (skipped)}"
 echo "This replaces the installed copies of: ${SKILLS[*]}."
 echo "Your customer folders, other skills, logs and Active Customers Doc are left as they are."
 read -r -p "Install with these? Press Enter or type y to go ahead, n to stop: " ok
@@ -163,10 +192,11 @@ case "${ok:-Y}" in [Yy]*) ;; *) echo "Nothing changed."; exit 0 ;; esac
 mkdir -p "$CONFIG_DIR" "$customers_dir" "$skills_dir"
 # Merge into the existing settings, so values the skills saved themselves (such as the Slack
 # self-DM and the recap check's mode) are kept.
-python3 -I - "$CONFIG" "$skills_t" "$customers_t" "$jira_site" "$jira_project" "$history_drive_folder" "$sa_drive_folder" <<'PY'
+python3 -I - "$CONFIG" "$skills_t" "$customers_t" "$jira_site" "$jira_project" "$history_drive_folder" "$sa_drive_folder" "$misc_drive_folder" <<'PY'
 import json, os, sys
 path = sys.argv[1]
-keys = ["skills_dir", "customers_dir", "jira_site", "jira_project", "history_drive_folder", "sa_drive_folder"]
+keys = ["skills_dir", "customers_dir", "jira_site", "jira_project", "history_drive_folder", "sa_drive_folder",
+        "misc_drive_folder"]
 try:
     with open(path) as f:
         cfg = json.load(f)
@@ -236,8 +266,10 @@ else echo "  ✗ Google Drive: not set up. See README.md, 'Sign in to Google Dri
 echo
 echo "Next steps:"
 echo "  1. Go to your Active Customers Doc and update it with your customers. This lets you use"
-echo "     the skills and the automatic recaps.${doc:+ $doc}"
-echo "  2. Open a Claude Code session and call the skills 🙂"
+echo "     the skills, the automatic recaps and meeting prep.${doc:+ $doc}"
+echo "  2. In claude.ai, Settings → Connectors: connect Glean, Slack and Google Calendar, and enable"
+echo "     them for Claude Code. Meeting prep reads your own calendar through Google Calendar."
+echo "  3. Open a Claude Code session and call the skills 🙂"
 
 # 8. The automated workflows. A shell script can't create a scheduled task: only a session in
 # the Claude desktop app can, with its scheduled-tasks tool (and the setup needs the app's Slack
@@ -248,8 +280,10 @@ echo "  2. Open a Claude Code session and call the skills 🙂"
 here_t="$(tilde "$HERE")"
 local_settings="$HERE/.claude/settings.local.json"
 task_rules=(mcp__scheduled-tasks__delete_scheduled_task mcp__scheduled-tasks__create_scheduled_task)
-setup_prompt="Set up the recap check (the customer-recap-check skill) from this folder. If a scheduled task named customer-recap-check already exists, delete it and create it again from here, with the same schedule. Keep the settings I already have (mode, Drive folder, Slack self-DM). Don't run the check yourself."
+setup_prompt="Set up the recap check (the customer-recap-check skill) from this folder. If a scheduled task named customer-recap-check already exists, delete it and create it again from here, with the same schedule. Keep the settings I already have (mode, Drive folder, Misc folder, Slack self-DM, meeting prep). Don't run the check yourself."
 echo
+echo "The automated workflows run in one hourly task: Active Customers sync, automatic recaps and"
+echo "meeting prep. Already set up? Press Enter: the task keeps running as it is."
 read -r -p "Turn on the automated workflows (the hourly recap check)? Type y for yes, Enter to skip: " auto
 case "$(printf '%s' "${auto:-n}" | tr '[:upper:]' '[:lower:]')" in
   y|yes)

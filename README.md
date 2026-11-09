@@ -402,13 +402,15 @@ this `CLAUDE.md` is kept on your computer.
 
 ### Prerequisites
 
-- **Claude Code**, with the **Glean** and **Slack** connectors switched on. In claude.ai,
-  **Settings → Connectors**, check both are connected and enabled for Claude Code:
+- **Claude Code**, with the **Glean**, **Slack** and **Google Calendar** connectors switched on.
+  In claude.ai, **Settings → Connectors**, check all three are connected and enabled for Claude
+  Code:
 
   | Connector | What the skills use it for |
   |---|---|
   | **Glean** | Search and read: Gong's emails in your Gmail, call transcripts, the customer's Drive folder, Jira and Salesforce |
   | **Slack** | Read channel and read thread (your self-DM, and the customer channels you listed), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts to your self-DM |
+  | **Google Calendar** | List events on your own calendar: [meeting prep](#meeting-prep) finds the meetings that name an Active customer and who accepted them, and `customer-session-prep` finds the next session's attendees. It never changes your calendar |
 - **Your Gmail comes through Glean,** so no extra API, token or Gmail connector is needed. Your
   company connects Gmail to Glean, and Glean only returns what you can see yourself; the recap
   check uses it to find Gong's "call is ready" emails, and opens no other mail. Check that a
@@ -490,15 +492,17 @@ It asks these questions. Each one suggests a value: press **Enter** (or type `y`
 | 3 | Confirm your Jira site is `launchdarkly.atlassian.net` | **Enter** to confirm, or type another site | For ticket links |
 | 4 | Your team's shared base Google Drive folder for customer projects (required) | Paste the team folder link, or **Enter** to keep a saved one. Everyone uses the same folder; ask your manager if you don't have it | The skills search it for earlier engagements with a customer |
 | 5 | Your own Google Drive folder, where I'll create your Active Customers Doc | Paste the folder link, **Enter** to keep a saved one, or type `pass` to skip for now | Every customer skill reads the Doc. If you skip it, setting up the recap check asks for the folder |
-| 6 | At the end, after installing: Turn on the automated workflows (the hourly recap check)? | **y** to set it up now (see below), or **Enter** to skip and do it later | The recap check runs as a scheduled task in the Claude desktop app, which the installer can only hand you off to |
+| 6 | Your Misc folder in Google Drive | Paste the folder link, **Enter** to keep a saved one, or type `pass` to skip for now | [Meeting prep](#meeting-prep) saves internal meeting preps in an Internal Preps folder it creates inside it. If you skip it, the first internal meeting asks for it in Slack |
+| 7 | At the end, after installing: Turn on the automated workflows (the hourly recap check)? | **y** to set it up now (see below), or **Enter** to skip and do it later. Already set up: **Enter** | The recap check runs the three workflows as one scheduled task in the Claude desktop app, which the installer can only hand you off to |
 
-After question 5 it shows **"Please confirm your selections"**, with every answer and your Jira
+After question 6 it shows **"Please confirm your selections"**, with every answer and your Jira
 project key.
 Check them, then press **Enter** to install, or type `n` to stop without changing anything.
 An answer that doesn't fit (a "yes" where a folder or site should be) is asked again, never saved.
 
-**Question 6, the automated workflows.** After installing, it asks whether to turn on the
-hourly recap check. A shell script can't create the scheduled task: only a session in the
+**Question 7, the automated workflows.** After installing, it asks whether to turn on the
+hourly recap check, which runs all three [workflows](#workflows) (Active Customers sync,
+automatic recaps and meeting prep). A shell script can't create the scheduled task: only a session in the
 Claude desktop app can, and the setup needs the app's Slack and Glean sign-ins. On **y** it:
 
 1. Shows two Claude Code permission rules and, if you agree, adds them to this clone's
@@ -516,7 +520,8 @@ it. In Auto, the hourly runs never stop to ask you; in Ask permissions they coul
 for an approval nobody gives. Press **Enter** to skip, and rerun `./install.sh` to turn them on
 later. Run from a temporary worktree, it tells you to use your main clone instead.
 
-**Already set up the recap check? Press Enter at question 6.** The scheduled task keeps running
+**Already set up the recap check? Press Enter at question 7.** That includes adding meeting
+prep: it's part of the same task, so the new skills reach it with no setup. The scheduled task keeps running
 as it is when you rerun `./install.sh`, so you don't need the setup prompt again. You only need it
 again if the task is deleted, you move or re-clone this folder (the task runs from it), or you
 want the runs in another permission mode. To change the hours or pause it, just ask Claude.
@@ -533,10 +538,10 @@ choose **Auto**:
 | The installed skills it installs (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`, `customer-recap-check`, `customer-shared-notes`) in the skills folder | **Replaced** with this repo's copy. Any edits you made to the installed copy are lost: edit `claude-code/` instead |
 | Other skills in the same skills folder | Left alone |
 | Your customer folders and each customer's `CLAUDE.md` | Left alone. It only creates the top folder if it's missing |
-| `~/.config/sa-skills/config.json` | Your answers are updated; everything else in it (Jira project key, Slack self-DM, recap check mode) is kept |
-| The processed-calls log, run log and shared-notes ledger in `~/.config/sa-skills/` | Left alone |
+| `~/.config/sa-skills/config.json` | Your answers are updated; everything else in it (Jira project key, Slack self-DM, recap check mode, meeting prep on or off, Internal Preps folder) is kept |
+| The processed-calls log, prepped-meetings log, run log and shared-notes ledger in `~/.config/sa-skills/` | Left alone |
 | Your Active Customers Doc | Left alone: it finds the Doc already in the folder instead of making a second one |
-| The scheduled recap check task | Left alone: the installer can't change it. Press **Enter** at question 6; there's no need to paste the setup prompt again |
+| The scheduled recap check task | Left alone: the installer can't change it. Press **Enter** at question 7; there's no need to paste the setup prompt again |
 | Google and Jira sign-ins | Never read or changed |
 | The Drive helper's Python libraries | Reused; only missing ones are installed |
 
@@ -674,30 +679,34 @@ sign-in is saved in `~/.config/sa-skills/google/token.json`.
 ### After signing in: Active Customers, dry run, then live
 
 Do these in order. The recap check needs both sign-ins and your Active Customers Doc, so turn it
-on in step 2, not on the very first install (skip question 6 then, with **Enter**).
+on in step 2, not on the very first install (skip question 7 then, with **Enter**).
 
 **1. Run `./install.sh` again.** It fills in your Jira site for you, shows that both sign-ins
 are done, and creates your Active Customers Doc. Open it from the link it prints and add a row
 per customer, marked Active, with its Gong account and Drive folder link.
 
-**2. Turn on the recap check.** Still in that install, answer **y** to question 6 and follow its
+**2. Turn on the recap check.** Still in that install, answer **y** to question 7 and follow its
 steps (a brand-new Code session in this clone, worktree off, Auto mode, paste the prompt). The
-check starts in **dry-run mode**: it writes nothing and only tells you what it would do.
+check starts in **dry-run mode**: it writes nothing and only tells you what it would do. Check
+that the **Google Calendar** connector is on too (Prerequisites), or meeting prep is skipped.
 
 **3. Check the dry run.** For your next few customer calls, look in your Slack self-DM after each
 hourly run. For each call it should post "Dry run: Saw the Gong meeting…", then "Dry run: would recap
-*\<title\>* with \<Customer\>…; links missing: …". Not waiting for a call? Say **"run the recap
+*\<title\>* with \<Customer\>…; links missing: …". For meetings on your calendar that name an
+Active customer, it lists which ones it would prep. Not waiting for a call? Say **"run the recap
 check now"** in a Code session in this clone, to run one check right away (still a dry run).
 
 | What you see | What to fix |
 |---|---|
 | Nothing for a call you were on | The row's **Gong account** must be exactly the account name Gong shows, and Status **Active** |
+| No meeting prep for a meeting with a customer | The meeting's title must name the customer as its row's Customer or Documentation name, and the Google Calendar connector must be on |
 | "links missing: …" | Add the missing links to the customer's `CLAUDE.md`, or reply in the thread once live |
 | No posts at all | The desktop app must be open and your Mac awake. Say "what did the recap check do today?" to read the run log |
 
 **4. Go live** when the dry runs look right: say **"switch the recap check to live"** in any Code
-session. From then on it writes the recaps, creates the Jira tickets and updates the Master
-Engagement Doc. Calls the dry run reported in the last 2 days are recapped for real.
+session. From then on it writes the recaps, creates the Jira tickets, updates the Master
+Engagement Doc and preps your meetings. Calls the dry run reported in the last 2 days are
+recapped for real.
 
 ## How to use it best
 
@@ -834,6 +843,7 @@ your IT team asks why it's set up this way.
 | **Slack** connector, posting by file share | ✅ Works | The recap check posts to your self-DM by sharing a small file with a message, and reads your replies. Only the file-upload tools can post |
 | **Slack** connector, reading a customer's channels | ✅ Works | The recap reads only the channels and chats you listed for that customer |
 | Jira through `acli` browser sign-in (`--web`) | ❌ Blocked | Approving in the browser still returns `access_denied`, most likely an admin policy on OAuth apps |
+| **Google Calendar** connector | ✅ Works | Lists your own events with each attendee's answer (accepted, declined, no answer). Meeting prep only reads it |
 | Atlassian Rovo MCP connector | ❌ Blocked | Couldn't be connected. Probably the same admin policy |
 | Google Drive connector for Claude | ❌ Not enabled | Not available to Claude at the time of writing. Ask IT if that has changed |
 | Slack connector, plain send-message tool | ❌ Not offered | Not among the connector's tools at the time of writing. The recap check would switch to it |
