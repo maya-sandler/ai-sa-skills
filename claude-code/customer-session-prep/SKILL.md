@@ -92,7 +92,10 @@ error: <one line, only when error>
 How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references/sources.md`.
 
 1. **Recaps in the folder.** `list --folder <ID> --contains "Meeting Recap"`, then `read` each one,
-   newest first. If there are none, say so and work from the session plan and `CLAUDE.md`.
+   newest first. If there are none, say so and work from the session plan and `CLAUDE.md`. Also
+   read `<Customer> – Internal Notes` if it's there (`list --folder <ID> --contains "Internal
+   Notes"`): the SA's notes from internal meetings, with LD action items. Use it like a recap, but
+   never quote it in a brief the customer could see.
 2. **Follow-ups still open.** From every recap's action-item tables and Next steps (older recaps
    call them Open questions), keep the items not marked done in a later recap's "Previous action
    items". For LaunchDarkly items with a Jira key in the recap, check the ticket:
@@ -112,8 +115,8 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
    the SA. Name them by the calendar's display name, else their entry in `CLAUDE.md`'s Team
    section, else their email (`alex.kim@acme.com` is Alex Kim, as spoken in recaps). Look
    in the same sources as above, and nowhere else:
-   - **Recaps:** questions they asked, topics they asked to cover next time, and next steps they
-     own or that LD owes them.
+   - **Recaps and Internal Notes:** questions they asked, topics they asked to cover next time,
+     and next steps they own or that LD owes them.
    - **Jira:** open tickets on the customer's epic for something they asked for (`acli jira
      workitem search --jql 'parent = <EPIC> AND statusCategory != Done' --fields
      key,summary,status --json`).
