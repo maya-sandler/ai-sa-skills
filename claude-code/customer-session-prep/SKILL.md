@@ -1,6 +1,6 @@
 ---
 name: customer-session-prep
-description: Prepare a quick one-page brief for the next LaunchDarkly customer session from the customer's current Drive folder only, and save it as a Google Doc there. Reads the earlier recaps in that folder, the follow-up items from them that are still open, the customer's support tickets, tech stack, session plan and links, and the Slack channels listed in the SA's Active Customers Doc. No history check of earlier engagements, older folders or Gong calls (that's customer-engagement-prep). Use when the user (a LaunchDarkly Solutions Architect) runs /customer-session-prep, or asks to prep for, get ready for, or brief them on the next session or call with a customer, usually from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
+description: Prepare a quick one-page brief for the next LaunchDarkly customer session from the customer's current Drive folder only, and save it as a Google Doc there. Reads the earlier recaps in that folder, the follow-up items from them that are still open, the customer's support tickets, tech stack, session plan and links, and the Slack channels listed in the SA's Active Customers Doc, and, for each person who accepted the meeting in the SA's calendar, what they wanted to discuss and what LD still owes them. Also preps internal (LD-only) meetings about a customer. No history check of earlier engagements, older folders or Gong calls (that's customer-engagement-prep). Use when the user (a LaunchDarkly Solutions Architect) runs /customer-session-prep, or asks to prep for, get ready for, or brief them on the next session or call with a customer, usually from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/; also run unattended by customer-recap-check's meeting prep.
 ---
 
 # Customer Session Prep Brief (Claude Code)
@@ -30,6 +30,42 @@ the full command:
 ~/.local/share/sa-skills/venv/bin/python -W ignore {{SKILLS_DIR}}/customer-meeting-recap/scripts/gdrive.py <command> ...
 ```
 
+## Unattended runs (from the recap check)
+
+`customer-recap-check` runs this skill for each meeting on the SA's calendar that names an Active
+customer, with a prompt that starts `UNATTENDED RUN`:
+
+```text
+UNATTENDED RUN
+Customer folder: {{CUSTOMERS_DIR}}/<folder>
+Meeting: <calendar title>, <YYYY-MM-DD HH:MM> (<time zone>)
+Calendar event: <link>
+Accepted: <name or email> (<LD or customer>), ...
+Internal: yes | no
+Save to Drive folder: <folder ID>
+```
+
+In an unattended run:
+
+- **Never ask the SA anything**, in chat or Slack. The recap check does all the Slack posting.
+- The **meeting is the session**: its title is the session name, its date and time are the
+  session date, and the Accepted list is who to cover in "What the attendees want" (Step 2.7).
+- Save to the **Save to Drive folder** given, never anywhere else. If it's missing, stop with
+  `status: held` and `needs: drive_folder`.
+- **Internal: yes** (only LaunchDarkly people): write an internal prep (Step 3, "Internal
+  meetings").
+- Skip the chat preview in Step 4, and end with this block, exactly:
+
+```text
+PREP_RESULT
+status: done | held | error
+name: <the Doc name>
+link: <webViewLink>
+id: <Doc ID>
+needs: <drive_folder, only when held>
+error: <one line, only when error>
+```
+
 ## Step 1: Customer, folder and session
 
 1. **Active Customers Doc.** Check the customer's row, as the recap skill's "Active Customers
@@ -40,10 +76,16 @@ the full command:
    no folder, create it as the recap skill's Step 1 says.
 3. **Drive folder.** The folder the SA gives wins; otherwise the row's Folder link; otherwise the
    opportunity's Drive folder in `CLAUDE.md`. None of them: ask the SA for the folder link before
-   doing anything else. The folder ID is the part after `/folders/`.
-4. **Session.** Find the next session's name, date and topic in this order: what the SA said, the
-   "Scheduled meetings" table in the latest recap, then the session plan. If you can't find the
-   date, write "date TBD" and keep going. Don't ask.
+   doing anything else (in an unattended run, stop with `status: held`). The folder ID is the
+   part after `/folders/`. This is where the recaps are read from, even when an internal prep is
+   saved somewhere else.
+4. **Session.** Find the next session's name, date and topic in this order: the meeting in an
+   unattended prompt, what the SA said, the SA's calendar, the "Scheduled meetings" table in the
+   latest recap, then the session plan. For the calendar, use the Google Calendar connector's
+   `list_events` with `fullText` = the customer's name over the next 14 days, and take the first
+   event whose title names the customer and that the SA hasn't declined: its title, date and time,
+   and the attendees who accepted (`responseStatus: accepted`, not the SA, not meeting rooms). If
+   you can't find the date, write "date TBD" and keep going. Don't ask.
 
 ## Step 2: Gather (in parallel where possible)
 
@@ -66,6 +108,23 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
    and `slack_read_thread` where the replies matter): new questions, promises and blockers. Never
    name or link the channels in the brief. No channels in the row or `CLAUDE.md`: skip this and
    say so at the end. Never search Slack for them.
+7. **What the attendees want.** For each person who accepted the meeting (Step 1.4), other than
+   the SA. Name them by the calendar's display name, else their entry in `CLAUDE.md`'s Team
+   section, else their email (`alex.kim@acme.com` is Alex Kim, as spoken in recaps). Look
+   in the same sources as above, and nowhere else:
+   - **Recaps:** questions they asked, topics they asked to cover next time, and next steps they
+     own or that LD owes them.
+   - **Jira:** open tickets on the customer's epic for something they asked for (`acli jira
+     workitem search --jql 'parent = <EPIC> AND statusCategory != Done' --fields
+     key,summary,status --json`).
+   - **Slack:** their messages in the customer's channels (item 6).
+
+   Keep an item only if it's **still open**: no later recap marks it done in "Previous action
+   items", and no later recap records it as discussed and agreed (a decision, an answer, or a
+   next step the attendee accepted). For each item, note where it came from (the recap's date,
+   the ticket or the Slack message's date). An attendee with nothing open gets "Nothing open
+   found". No attendee list (no calendar event, nobody accepted): leave the section out, and say
+   so at the end.
 
 Never make up facts. If a source returns nothing, write "None found".
 
@@ -79,6 +138,13 @@ Never make up facts. If a source returns nothing, write "None found".
 
 ## Latest status
 - 2–4 bullets from the latest recap and Slack: where things stand, risks.
+
+## What the attendees want
+- **<Name> (<Customer or LD>, <role if known>)**
+  - Wants to discuss: <topic> (<source, date>)
+  - LD owes: <item> (<source, date>) ([KEY-125](https://{{JIRA_SITE}}/browse/KEY-125))
+  - Raised, not yet agreed: <topic> (<source, date>)
+- **<Name> (...)**: Nothing open found
 
 ## Deliver in <session name> (<YYYY-MM-DD or "date TBD">)
 - ✅ <Done task> → show/explain: <what to demo or say> ([KEY-123](https://{{JIRA_SITE}}/browse/KEY-123))
@@ -116,12 +182,24 @@ Rules:
 - **Keep owners apart.** Never list LD people's action items under the customer's heading.
 - For a draft answer, give a confirmed `launchdarkly.com/docs/...` link (LaunchDarkly MCP
   `search-docs`) where one fits.
+- In "What the attendees want", list only the people who accepted, and give each item its source.
+  This section can run past 5 bullets: one block per attendee.
+
+**Internal meetings** (only LaunchDarkly people accepted, or `Internal: yes`): the same brief,
+titled `# <Customer> – Internal Prep – <meeting title> (<YYYY-MM-DD>)`, with the goal written for
+the LD team (what to align on before the next customer session). In "What the attendees want",
+cover the LD attendees: what each asked the SA for, and what the SA owes them, from the recaps'
+LD internal action items, Jira and Slack.
 
 ## Step 4: Save to Drive and link
 
 1. Save the brief:
    `save --folder <ID> --name "<Customer> – Session Prep – <session name> (<YYYY-MM-DD or date TBD>)" --file <scratchpad>/prep.md`.
-   If a brief with that name already exists, this updates it.
+   If a brief with that name already exists, this updates it. An internal prep is named
+   `<Customer> – Internal Prep – <meeting title> (<YYYY-MM-DD>)`, and goes to the **Save to Drive
+   folder** of an unattended run (the SA's Internal Preps folder). Run by hand, ask the SA where
+   to save an internal prep, suggesting the `internal_preps_folder` setting (`recap_check.py
+   config get internal_preps_folder`) when it's set.
 2. **Changes to a brief that's already saved:** `read --id <DOC_ID>` into the scratchpad, edit that
    file, and `save` it under the same name. Don't rebuild it from scratch: the SA may have edited
    the Doc.

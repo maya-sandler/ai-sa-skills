@@ -43,6 +43,23 @@ Commands (every one prints JSON):
                                         output, saved to a file) and print the call's ID, link,
                                         title, account, date and duration. Never the Key points
 
+  meetings window                       the time range to read from the calendar: from now to the
+                                        end of today, and from 20:00 on, to the end of the next
+                                        working day too
+  meetings match --file PATH --folder ID
+                                        the calendar events (list_events output, saved to a file)
+                                        whose title names an Active customer, with the customer,
+                                        whether it's internal, who accepted, and what was done before
+  meetings get --id EVENT_ID            what happened to a calendar event before, or null
+  meetings mark --id EVENT_ID --status S [--customer C] [--title T] [--start S] [--doc DOC_ID]
+                [--link URL] [--note N] [--slack-ts TS]
+                                        record a meeting: prepped, held, error, skipped or dry-run
+  meetings held                         meetings still waiting for something (status held)
+
+  drive-folder ensure --parent ID --name NAME
+                                        the folder NAME in that folder, created if this tool
+                                        hasn't made one there yet
+
 Nothing here reads or prints a token or secret.
 """
 import argparse
@@ -60,6 +77,11 @@ import urllib.request
 HOME_CONFIG = os.path.expanduser("~/.config/sa-skills")
 CONFIG = os.path.join(HOME_CONFIG, "config.json")
 CALLS = os.path.join(HOME_CONFIG, "processed-calls.json")
+MEETINGS = os.path.join(HOME_CONFIG, "prepped-meetings.json")
+MEETING_STATUSES = ("prepped", "held", "error", "skipped", "dry-run")
+# From this hour on, a run also reads the next working day, so its prep is ready the evening before.
+EVENING_HOUR = 20
+FOLDER_MIME = "application/vnd.google-apps.folder"
 LOG_FILE = os.path.join(HOME_CONFIG, "recap-check-log.md")
 # Lines queued by older versions, which flushed them to Drive Docs: moved into LOG_FILE.
 PENDING = os.path.join(HOME_CONFIG, "logs", "pending.jsonl")
@@ -471,6 +493,143 @@ def cmd_gong_email(a):
          "email_received": received})
 
 
+# --- meeting prep ---------------------------------------------------------
+
+def next_working_day(day):
+    day += datetime.timedelta(days=1)
+    while day.weekday() >= 5:  # Saturday, Sunday
+        day += datetime.timedelta(days=1)
+    return day
+
+
+def meeting_window(now):
+    """From now to the end of today; from EVENING_HOUR on, to the end of the next working day."""
+    last = next_working_day(now.date()) if now.hour >= EVENING_HOUR else now.date()
+    end = datetime.datetime.combine(last + datetime.timedelta(days=1), datetime.time())
+    return {"start": now.replace(microsecond=0).isoformat(), "end": end.isoformat(),
+            "days": [(now.date() + datetime.timedelta(days=i)).isoformat()
+                     for i in range((last - now.date()).days + 1)]}
+
+
+def load_events(path):
+    """list_events output: inline JSON, or a result Claude Code saved as [{"type": "text", ...}]."""
+    with open(path) as f:
+        raw = f.read()
+    try:
+        obj = json.loads(raw)
+    except ValueError:
+        fail("that file isn't JSON: save the list_events result as it came back")
+    if isinstance(obj, list) and obj and all(isinstance(b, dict) and b.get("type") == "text" for b in obj):
+        obj = json.loads("\n".join(b.get("text", "") for b in obj))
+    if isinstance(obj, dict):
+        obj = obj.get("events", [])
+    if not isinstance(obj, list):
+        fail("no events in that file")
+    return obj
+
+
+def domain(email):
+    return email.rsplit("@", 1)[-1].lower() if "@" in (email or "") else ""
+
+
+def name_pattern(name):
+    return re.compile(r"(?<![A-Za-z0-9])%s(?![A-Za-z0-9])" % re.escape(name.strip()), re.I)
+
+
+def match_meetings(events, rows, ledger):
+    """The events whose title names an Active customer, soonest first."""
+    found = []
+    for ev in events:
+        start = (ev.get("start") or {}).get("dateTime")
+        if ev.get("status") == "cancelled" or not start:
+            continue  # cancelled, or all-day
+        if ev.get("eventType", "DEFAULT") not in ("DEFAULT", ""):
+            continue  # out of office, focus time, working location
+        title = ev.get("summary") or ""
+        hits = [r for r in rows if any(n and name_pattern(n).search(title)
+                                       for n in {r["customer"], r["documentation_name"]})]
+        if not hits:
+            continue
+        people = [p for p in ev.get("attendees", []) if not p.get("resource")]
+        me = next((p for p in people if p.get("self")), None)
+        if me and me.get("responseStatus") == "declined":
+            continue
+        own = (me or {}).get("email") or ((ev.get("organizer") or {}).get("email")
+                                          if (ev.get("organizer") or {}).get("self") else "")
+        own_domain = domain(own)
+        others = [p for p in people if not p.get("self")]
+        internal = bool(own_domain) and all(domain(p.get("email")) == own_domain for p in others)
+        accepted = [{"email": p.get("email", ""), "name": p.get("displayName", ""),
+                     "side": "LD" if own_domain and domain(p.get("email")) == own_domain else "customer"}
+                    for p in others if p.get("responseStatus") == "accepted"]
+        before = ledger.get(ev.get("id"))
+        row = hits[0]
+        found.append({
+            "event_id": ev.get("id"), "title": title, "start": start, "date": start[:10],
+            "calendar_link": ev.get("htmlLink", ""),
+            "customer": row["customer"], "documentation_name": row["documentation_name"],
+            "local_folder": row["local_folder"], "folder_id": row["folder_id"],
+            "other_customers_named": [r["customer"] for r in hits[1:]],
+            "internal": internal, "accepted": accepted,
+            "not_accepted": len([p for p in others if p.get("responseStatus") != "accepted"]),
+            "before": before,
+            # Prepped for another day (the meeting moved): prep it again.
+            "moved": bool(before and before.get("start", "")[:10] not in ("", start[:10])),
+        })
+    found.sort(key=lambda m: m["start"])
+    return found
+
+
+def cmd_meetings(a):
+    ledger = load(MEETINGS, {})
+    if a.action == "window":
+        out(meeting_window(datetime.datetime.now()))
+        return
+    if a.action == "match":
+        if not (a.file and a.folder):
+            fail("meetings match needs --file and --folder")
+        g = gdrive()
+        svc = g.drive()
+        doc = g.find(svc, a.folder, name=CUSTOMERS_DOC)
+        if not doc:
+            fail("no Active Customers Doc in that folder yet: run 'customers init --folder %s'" % a.folder)
+        rows = [customer_row(r) for r in parse_table(doc_markdown(g, svc, doc[0]["id"]))]
+        rows = [r for r in rows if r["customer"] and r["active"]]
+        out({"meetings": match_meetings(load_events(a.file), rows, ledger)})
+        return
+    if a.action == "get":
+        out(ledger.get(a.id))
+        return
+    if a.action == "held":
+        out({k: v for k, v in ledger.items() if v.get("status") == "held"})
+        return
+    if a.status not in MEETING_STATUSES:
+        fail("status must be one of %s" % ", ".join(MEETING_STATUSES))
+    entry = ledger.get(a.id, {})
+    entry.update({k: v for k, v in (("status", a.status), ("customer", a.customer), ("title", a.title),
+                                    ("start", a.start), ("doc", a.doc), ("link", a.link),
+                                    ("note", a.note), ("slack_ts", a.slack_ts)) if v})
+    entry.setdefault("first_seen", datetime.datetime.now().isoformat(timespec="seconds"))
+    entry["updated"] = datetime.datetime.now().isoformat(timespec="seconds")
+    ledger[a.id] = entry
+    write_private(MEETINGS, ledger)
+    out({"marked": a.id, "entry": entry})
+
+
+def cmd_drive_folder(a):
+    g = gdrive()
+    svc = g.drive()
+    q = "'%s' in parents and trashed = false and mimeType = '%s' and name = '%s'" % (
+        a.parent, FOLDER_MIME, a.name.replace("\\", "\\\\").replace("'", "\\'"))
+    found = svc.files().list(q=q, fields="files(id, name, webViewLink)").execute().get("files", [])
+    if found:
+        out({"exists": found[0]})
+        return
+    made = svc.files().create(body={"name": a.name, "mimeType": FOLDER_MIME, "parents": [a.parent]},
+                              fields="id, name, webViewLink").execute()
+    out({"created": made})
+
+
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -508,13 +667,27 @@ def main():
     ge = sub.add_parser("gong-email")
     ge.add_argument("--file", required=True)
 
+    me = sub.add_parser("meetings")
+    me.add_argument("action", choices=["window", "match", "get", "mark", "held"])
+    for opt in ("--id", "--file", "--folder", "--status", "--customer", "--title", "--start", "--doc",
+                "--link", "--note", "--slack-ts"):
+        me.add_argument(opt)
+
+    df = sub.add_parser("drive-folder")
+    df.add_argument("action", choices=["ensure"])
+    df.add_argument("--parent", required=True)
+    df.add_argument("--name", required=True)
+
     a = p.parse_args()
     if a.cmd == "calls" and a.action in ("get", "mark") and not a.id:
         fail("calls %s needs --id" % a.action)
+    if a.cmd == "meetings" and a.action in ("get", "mark") and not a.id:
+        fail("meetings %s needs --id" % a.action)
     if a.cmd == "log" and a.action == "add" and not (a.kind and a.run and a.text):
         fail("log add needs --kind, --run and --text")
     {"config": cmd_config, "customers": cmd_customers, "calls": cmd_calls,
-     "log": cmd_log, "slack-upload": cmd_slack_upload, "gong-email": cmd_gong_email}[a.cmd](a)
+     "log": cmd_log, "slack-upload": cmd_slack_upload, "gong-email": cmd_gong_email,
+     "meetings": cmd_meetings, "drive-folder": cmd_drive_folder}[a.cmd](a)
 
 
 if __name__ == "__main__":
