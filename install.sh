@@ -358,5 +358,12 @@ PY
         else echo "  It starts in dry-run mode. When its reports look right, say \"switch the recap check to live\"."; fi ;;
     esac ;;
   *)
-    echo "  Skipped. To turn them on later, rerun ./install.sh and answer y." ;;
+    # The scheduled-tasks tool keeps each task in its own folder; this one means the task exists.
+    if [ -f "$HOME/.claude/scheduled-tasks/customer-recap-check/SKILL.md" ]; then
+      echo "  ✓ Your hourly task is already set up and wasn't changed. Its next run uses the skills"
+      echo "    just installed, so the three workflows carry on with no more steps."
+    else
+      echo "  Skipped: the automated workflows aren't set up yet. To turn them on later, rerun"
+      echo "  ./install.sh and answer y."
+    fi ;;
 esac
