@@ -17,7 +17,9 @@ SRC="$HERE/claude-code"
 CONFIG_DIR="$HOME/.config/sa-skills"
 CONFIG="$CONFIG_DIR/config.json"
 VENV="$HOME/.local/share/sa-skills/venv"
-SKILLS=(customer-meeting-recap customer-session-prep customer-engagement-prep customer-recap-check customer-shared-notes)
+SKILLS=(customer-meeting-recap customer-session-prep customer-engagement-prep customer-recap-check customer-master-engagement-doc customer-internal-notes)
+# Skills this repo used to install under another name: their installed copies are removed.
+RENAMED=(customer-shared-notes)
 
 # Show paths under your home folder as ~/..., the way the skills use them.
 tilde() { case "$1" in "$HOME"*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' "$1" ;; esac; }
@@ -212,6 +214,12 @@ os.chmod(path, 0o600)
 PY
 
 # 5. Install the skills, filling in the folder paths and Jira settings.
+for s in "${RENAMED[@]}"; do
+  if [ -d "${skills_dir:?}/$s" ]; then
+    rm -rf "${skills_dir:?}/$s"
+    echo "✓ Removed $s (renamed; installed under its new name below)"
+  fi
+done
 for s in "${SKILLS[@]}"; do
   rm -rf "${skills_dir:?}/$s"
   cp -R "$SRC/$s" "$skills_dir/$s"

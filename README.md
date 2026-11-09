@@ -19,14 +19,15 @@ This repo includes:
   3. **Meeting prep:** finds the meetings on your calendar that name an Active customer, preps
      each one (what each person who accepted wants, and what LD owes them), and tells you in
      your Slack self-DM which meetings you have and where each prep is.
-- **Five Claude Code skills** (in `claude-code/`):
+- **Six Claude Code skills** (in `claude-code/`):
 
 | Skill | What it does | How it runs |
 |---|---|---|
 | **`customer-meeting-recap`** | After a call, turns the recording or transcript into a recap Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the LaunchDarkly team committed to | **Manual:** you prompt it (`/customer-meeting-recap`). The recap check also runs it automatically |
 | **`customer-session-prep`** | Before a call, writes a one-page prep brief (a Google Doc in the same folder) from that folder's recaps, so you know in two minutes what to deliver, what's still open, what each attendee wants, and what to ask | **Manual:** you prompt it (`/customer-session-prep`). The recap check also runs it for each meeting on your calendar with an Active customer |
 | **`customer-engagement-prep`** | The same brief plus the engagement's history (earlier engagements, older folders, every Gong call), for a new engagement or an account you're picking up | **Manual:** you prompt it (`/customer-engagement-prep`) |
-| **`customer-shared-notes`** | Adds each recap to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`, newest meeting on top, without Jira tickets or internal links | **Manual** (`/customer-shared-notes`), and **automatic:** the recap check runs it after every recap |
+| **`customer-master-engagement-doc`** | Adds each recap to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`, newest meeting on top, without Jira tickets or internal links | **Manual** (`/customer-master-engagement-doc`), and **automatic:** the recap check runs it after every recap |
+| **`customer-internal-notes`** | After an internal LD meeting about a customer (no recording needed), turns the notes you paste into a block in the customer's ongoing `<Customer> – Internal Notes` Doc, newest on top, and creates a Jira ticket for each LD action item | **Manual:** you prompt it (`/customer-internal-notes`) from the customer's session, and paste your notes |
 | **`customer-recap-check`** | Runs the three [workflows](#workflows) every hour: syncs your Active Customers Doc into each customer's `CLAUDE.md`, recaps new calls with your Active customers and updates the Master Engagement Doc, and preps your meetings with them, telling you in your Slack self-DM and asking there when links are missing | **Automatic workflows:** a scheduled task in the Claude desktop app, set up once ("set up the recap check") |
 
 **Where you call them from:** Claude Code. You can't call them from Slack or the Chat tab. Slack is only
@@ -156,7 +157,7 @@ Then, under **NEXT:**
 Both briefs use the customer's name and "LD" instead of "they" or "we", so they read clearly
 when you forward them.
 
-### `customer-shared-notes`
+### `customer-master-engagement-doc`
 
 The Doc you share with the customer. You say something like *"Update the Master Engagement Doc
 for Acme"*, or the recap check runs it after each automatic recap. It keeps one Google Doc per
@@ -177,10 +178,31 @@ opportunity, `<Customer>-LaunchDarkly Master Engagement Doc`, in the opportunity
 The Doc stays private to you: review it, then click **Share** in the Doc and add the customer's
 people yourself.
 
+### `customer-internal-notes`
+
+For internal meetings about a customer (an internal connect with the AE, a PS handoff, an account
+team sync), often on Zoom with no recording or transcript. You write your own notes, open the
+customer's Code session, run `/customer-internal-notes` and paste them. It:
+
+- **Adds the meeting to one ongoing Doc per customer,** `<Customer> – Internal Notes`, in the
+  customer's Drive folder (the Folder link in your Active Customers Doc), **newest meeting on
+  top**. The first run creates the Doc; later runs add a block above the last one and keep
+  everything else, including your edits. Each block has the attendees, a summary, what was
+  discussed and decided, action items, and open questions.
+- **Writes only what your notes say.** It tidies the wording but adds no facts or due dates, and
+  marks anything unclear instead of guessing. The meeting's title and attendees come from your
+  calendar (the meeting that day whose title names the customer), unless you give them.
+- **Creates Jira tickets under the customer's epic** for each LD action item, like the recap
+  skill: **yours are assigned to you**; **anyone else's are unassigned**, titled with the owner's
+  name (`Alex: …`) so they aren't notified and you can follow up. It checks the epic's open
+  tickets first, so nothing is created twice. Customer-side items get no ticket.
+- **Stays internal:** it never goes in the Master Engagement Doc or to Slack. `customer-session-prep`
+  reads it too, so the next prep includes what you owe the account team.
+
 ### `customer-recap-check`
 
 The skill behind the automated workflows: one hourly scheduled task runs it, and it runs the
-other skills for you (`customer-meeting-recap`, `customer-shared-notes` and
+other skills for you (`customer-meeting-recap`, `customer-master-engagement-doc` and
 `customer-session-prep`). You also talk to it to set it up and change its settings. What it does
 on each run is in [Workflows](#workflows) below.
 
@@ -242,7 +264,7 @@ Doc, it's skipped silently.
    is saved to the customer's `CLAUDE.md` and filled in on the recap Doc. If the opportunity was
    missing, the meeting is then added to the Master Engagement Doc (which never shows internal
    links).
-5. **Updates the Master Engagement Doc:** after each finished recap, runs `customer-shared-notes`
+5. **Updates the Master Engagement Doc:** after each finished recap, runs `customer-master-engagement-doc`
    to add the meeting to the opportunity's customer-facing `<Customer>-LaunchDarkly Master
    Engagement Doc`. It runs only once the recap is saved, never in dry-run mode, and never adds a
    meeting twice.
@@ -535,7 +557,8 @@ choose **Auto**:
 
 | Already there | What the installer does |
 |---|---|
-| The installed skills it installs (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`, `customer-recap-check`, `customer-shared-notes`) in the skills folder | **Replaced** with this repo's copy. Any edits you made to the installed copy are lost: edit `claude-code/` instead |
+| The installed skills it installs (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`, `customer-recap-check`, `customer-master-engagement-doc`, `customer-internal-notes`) in the skills folder | **Replaced** with this repo's copy. Any edits you made to the installed copy are lost: edit `claude-code/` instead |
+| `customer-shared-notes`, the old name of `customer-master-engagement-doc` | **Removed**, since the same skill is installed under its new name. Its ledger, `~/.config/sa-skills/shared-notes.json`, keeps its name and contents, so no meeting is added to a Master Engagement Doc twice |
 | Other skills in the same skills folder | Left alone |
 | Your customer folders and each customer's `CLAUDE.md` | Left alone. It only creates the top folder if it's missing |
 | `~/.config/sa-skills/config.json` | Your answers are updated; everything else in it (Jira project key, Slack self-DM, recap check mode, meeting prep on or off, Internal Preps folder) is kept |
@@ -738,7 +761,8 @@ Type the skill as a slash command, followed by whatever you have for this call:
 | `/customer-meeting-recap` | After a call: recap Doc + Jira tickets |
 | `/customer-session-prep` | Before a call: one-page prep brief from the current folder's recaps |
 | `/customer-engagement-prep` | Before a call, with the engagement's history: new engagements and accounts you're picking up |
-| `/customer-shared-notes` | After a recap: add it to the customer-facing Master Engagement Doc (the recap check does this for you after each automatic recap) |
+| `/customer-master-engagement-doc` | After a recap: add it to the customer-facing Master Engagement Doc (the recap check does this for you after each automatic recap) |
+| `/customer-internal-notes` | After an internal LD meeting about the customer: paste your notes, and it adds them to the customer's Internal Notes Doc and creates the Jira tickets |
 | `/customer-recap-check` | Set up, check on or change the automatic recaps. Usually said in words instead: see step 5 |
 
 You can also just ask ("recap this call", "prep me for Thursday's session") and Claude picks the
@@ -888,7 +912,8 @@ your IT team asks why it's set up this way.
 | `claude-code/customer-session-prep/` | The quick prep skill: `SKILL.md` |
 | `claude-code/customer-engagement-prep/` | The prep skill with the engagement's history: `SKILL.md` |
 | `claude-code/customer-recap-check/` | The automated workflows: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, the run log, Slack uploads, Gong emails, calendar meetings to prep, the Internal Preps folder) |
-| `claude-code/customer-shared-notes/` | The Master Engagement Doc skill: `SKILL.md`, `scripts/shared_notes.py` (ledger of recaps already in each Doc); uses the recap skill's Drive helper |
+| `claude-code/customer-master-engagement-doc/` | The Master Engagement Doc skill: `SKILL.md`, `scripts/engagement_doc.py` (ledger of recaps already in each Doc); uses the recap skill's Drive helper |
+| `claude-code/customer-internal-notes/` | The internal notes skill: `SKILL.md`; uses the recap skill's Drive helper and Jira ticket script |
 
 ## Rules for this repo
 

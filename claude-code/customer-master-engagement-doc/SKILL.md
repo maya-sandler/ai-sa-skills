@@ -1,5 +1,5 @@
 ---
-name: customer-shared-notes
+name: customer-master-engagement-doc
 description: Keep one customer-facing Google Doc of meeting notes per opportunity, the <Customer>-LaunchDarkly Master Engagement Doc, built from the recaps that customer-meeting-recap saved in the opportunity's Drive folder. Stacks one block per meeting, newest on top, and leaves out everything internal (Jira tickets, internal links, internal-only tasks), so the SA can share the Doc with the customer. Also runs unattended after each automatic recap from customer-recap-check, and never adds a meeting twice. Use when the user (a LaunchDarkly Solutions Architect) asks to update, build or refresh the Master Engagement Doc (the shared, customer-facing meeting notes), or to get the recaps ready to share with the customer, usually after a recap and from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
 ---
 
@@ -39,7 +39,7 @@ each shared Doc: the shared Doc's ID, each recap's Doc ID, and the recap's Gong 
 only IDs. Never edit it by hand; use the helper:
 
 ```bash
-python3 {{SKILLS_DIR}}/customer-shared-notes/scripts/shared_notes.py ledger <action> ...
+python3 {{SKILLS_DIR}}/customer-master-engagement-doc/scripts/engagement_doc.py ledger <action> ...
 ```
 
 | Command | Does |
