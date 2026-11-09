@@ -1,6 +1,6 @@
 ---
 name: customer-recap-check
-description: Automatically recap LaunchDarkly customer calls and prep upcoming meetings. On a schedule, finds Gong's "call recording is ready" emails (Gmail through Glean) for calls with the SA's active customers, waits for each call's full transcript in Glean, skips calls already recapped, runs customer-meeting-recap unattended, adds each finished recap to the customer's Master Engagement Doc (customer-shared-notes), and reports in the SA's Slack self-DM, asking there for any missing links. It also reads the SA's calendar for today's (and, in the evening, the next working day's) meetings whose title names an active customer, runs customer-session-prep for each, and tells the SA in Slack which meetings they have and where each prep is. Also sets the check up and changes its settings. Use when a scheduled task runs the recap check, or when the user (a LaunchDarkly Solutions Architect) asks to set up, run, pause, switch to live, or check on automatic meeting recaps or meeting prep.
+description: Automatically recap LaunchDarkly customer calls and prep upcoming meetings. On a schedule, finds Gong's "call recording is ready" emails (Gmail through Glean) for calls with the SA's active customers, waits for each call's full transcript in Glean, skips calls already recapped, runs customer-meeting-recap unattended, adds each finished recap to the customer's Master Engagement Doc (customer-master-engagement-doc), and reports in the SA's Slack self-DM, asking there for any missing links. It also reads the SA's calendar for today's (and, in the evening, the next working day's) meetings whose title names an active customer, runs customer-session-prep for each, and tells the SA in Slack which meetings they have and where each prep is. Also sets the check up and changes its settings. Use when a scheduled task runs the recap check, or when the user (a LaunchDarkly Solutions Architect) asks to set up, run, pause, switch to live, or check on automatic meeting recaps or meeting prep.
 ---
 
 # Customer Recap Check (Claude Code)
@@ -9,7 +9,7 @@ This skill turns every call with an **active customer** into a recap and Jira ti
 prompt from the SA. A Claude Code scheduled task runs it every hour on the SA's Mac. Each run
 looks for new **Gong "call is ready" emails** in the SA's Gmail, recaps those calls with
 `customer-meeting-recap`, adds each finished recap to the customer-facing Master Engagement Doc with
-`customer-shared-notes`, and tells the SA in their **Slack self-DM**, asking there when links
+`customer-master-engagement-doc`, and tells the SA in their **Slack self-DM**, asking there when links
 are missing.
 
 Gong emails the SA when a call's recording is ready, about two hours before Glean's Gong search
@@ -204,7 +204,7 @@ after the last follow-up the check posted in that thread).
 | `held`, its note has `drive_folder` or `unclear-customer` (older runs wrote `needs-drive-folder`) | None | If `reminded` is before today: post in the thread "Still waiting: <the question>", and `calls mark --reminded <today>`. Otherwise nothing |
 | `done` with `missing` | Links, or "skip" / "none" for some | Save each link to the customer's `CLAUDE.md` as the recap skill's "Keep CLAUDE.md current" says (Slack channels in its **Slack** section; a link that doesn't exist is `none`). An opportunity name in the reply picks that entry; a new one gets a new entry with that name, holding the reply's links and the recap's Drive folder. Then, if the call has a `recap` and the reply gave the opportunity or a Salesforce, Vitalstatistix or session plan link, update that Doc: find its exact name with `list --folder <Drive folder> --contains "Meeting Recap"` (the entry with that ID), `read --id <recap>` into the scratchpad, replace the `Not found` Opportunity line and Customer links with that opportunity's links from `CLAUDE.md`, and `save` under that name. Never add Slack channels to the Doc. If the call's `shared_notes` isn't `added` or `already_there` (an unknown opportunity holds it), run the Master Engagement Doc step (step 9) now. The Master Engagement Doc never gets the links themselves: they're internal. Then `calls mark --missing <what's still missing, or none>` (a skipped link counts as no longer missing), and confirm in the thread with the recap link and the Master Engagement Doc line. Audit line for the Doc |
 | `done` with `missing` | None | Nothing |
-| `share_link` is `pending`, any status | A Gong link that isn't the call's internal link (`call_url`) | It's the customer share link. `calls mark --share-link <link>`. If the call's `shared_notes` is `added` or `already_there`, run `customer-shared-notes` with a prompt starting `UNATTENDED RUN, SHARE LINK` (customer folder, opportunity, recap Doc ID, Gong call ID, meeting date and title, the link). On `added`: `calls mark --share-link-in-doc yes`, audit line, and reply in the thread "Added the share link to *<date> – <title>* in the Master Engagement Doc: <doc link>". Otherwise (no recap yet, or the Doc is held), reply "Got the share link: I'll add it to the Master Engagement Doc with the recap" |
+| `share_link` is `pending`, any status | A Gong link that isn't the call's internal link (`call_url`) | It's the customer share link. `calls mark --share-link <link>`. If the call's `shared_notes` is `added` or `already_there`, run `customer-master-engagement-doc` with a prompt starting `UNATTENDED RUN, SHARE LINK` (customer folder, opportunity, recap Doc ID, Gong call ID, meeting date and title, the link). On `added`: `calls mark --share-link-in-doc yes`, audit line, and reply in the thread "Added the share link to *<date> – <title>* in the Master Engagement Doc: <doc link>". Otherwise (no recap yet, or the Doc is held), reply "Got the share link: I'll add it to the Master Engagement Doc with the recap" |
 | `share_link` is `pending`, any status | "no link" | `calls mark --share-link none`, and confirm in the thread |
 
 A reply can hold a share link and other links at once: handle each. The share link never goes
@@ -335,7 +335,7 @@ file once the call is handled.
 
 **Master Engagement Doc.** Every time a recap ends `done` (a first run, or a resumed held call),
 add it to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`. Run the
-`customer-shared-notes` skill once, only after the recap Doc is saved, with this prompt:
+`customer-master-engagement-doc` skill once, only after the recap Doc is saved, with this prompt:
 
 ```text
 UNATTENDED RUN

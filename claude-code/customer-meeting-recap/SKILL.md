@@ -101,7 +101,7 @@ any tickets not created yet, adding their keys to the recap's Jira column.
 The SA keeps an **Active Customers** Google Doc: one row per customer, with Customer,
 Documentation name, Folder link, Salesforce opportunity, Slack channels, Gong account and Status. All the customer skills
 (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`,
-`customer-shared-notes`, `customer-recap-check`) read it first, and **work only on customers
+`customer-master-engagement-doc`, `customer-recap-check`) read it first, and **work only on customers
 whose Status is Active** (any case), so old customers are left alone.
 
 ```bash

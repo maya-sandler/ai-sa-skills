@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Helper for the customer-shared-notes skill: the ledger of recaps already in each shared Doc.
+"""Helper for the customer-master-engagement-doc skill: the ledger of recaps already in each shared Doc.
 
 The ledger is ~/.config/sa-skills/shared-notes.json. It maps each Master Engagement Doc's ID to
 the recap Doc IDs added to it, with each recap's Gong call ID when it has one. It holds only IDs,
 never Doc names or content.
 
-  python3 shared_notes.py <command> ...
+  python3 engagement_doc.py <command> ...
 
 Commands (every one prints JSON):
   ledger get --doc DOC_ID                      the recaps already added to that shared Doc, or null
@@ -20,6 +20,8 @@ import json
 import os
 import sys
 
+# Named after the skill's old name (customer-shared-notes). Kept as it is, so a rename never makes
+# the skill forget which recaps are already in each Doc and add them again.
 LEDGER = os.path.join(os.path.expanduser("~/.config/sa-skills"), "shared-notes.json")
 
 

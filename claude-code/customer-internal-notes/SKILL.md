@@ -15,7 +15,7 @@ them in chat, and this skill:
 2. Creates a Jira ticket under the customer's epic for each LD action item in the notes.
 
 **It's internal only.** Never add any of it to the customer-facing Master Engagement Doc
-(`customer-shared-notes`), never post it to Slack, and never write it into a customer recap.
+(`customer-master-engagement-doc`), never post it to Slack, and never write it into a customer recap.
 
 **Settings:** customer folders live in `{{CUSTOMERS_DIR}}/`, the skills in `{{SKILLS_DIR}}/`, and
 Jira tickets are in project `{{JIRA_PROJECT}}` on `{{JIRA_SITE}}`. If a placeholder in double
