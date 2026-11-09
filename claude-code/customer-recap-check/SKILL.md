@@ -1,6 +1,6 @@
 ---
 name: customer-recap-check
-description: Automatically recap LaunchDarkly customer calls. On a schedule, finds Gong's "call recording is ready" emails (Gmail through Glean) for calls with the SA's active customers, waits for each call's full transcript in Glean, skips calls already recapped, runs customer-meeting-recap unattended, adds each finished recap to the customer's Master Engagement Doc (customer-shared-notes), and reports in the SA's Slack self-DM, asking there for any missing links. Also sets the check up and changes its settings. Use when a scheduled task runs the recap check, or when the user (a LaunchDarkly Solutions Architect) asks to set up, run, pause, switch to live, or check on automatic meeting recaps.
+description: Automatically recap LaunchDarkly customer calls and prep upcoming meetings. On a schedule, finds Gong's "call recording is ready" emails (Gmail through Glean) for calls with the SA's active customers, waits for each call's full transcript in Glean, skips calls already recapped, runs customer-meeting-recap unattended, adds each finished recap to the customer's Master Engagement Doc (customer-shared-notes), and reports in the SA's Slack self-DM, asking there for any missing links. It also reads the SA's calendar for today's (and, in the evening, the next working day's) meetings whose title names an active customer, runs customer-session-prep for each, and tells the SA in Slack which meetings they have and where each prep is. Also sets the check up and changes its settings. Use when a scheduled task runs the recap check, or when the user (a LaunchDarkly Solutions Architect) asks to set up, run, pause, switch to live, or check on automatic meeting recaps or meeting prep.
 ---
 
 # Customer Recap Check (Claude Code)
@@ -14,9 +14,14 @@ are missing.
 
 Gong emails the SA when a call's recording is ready, about two hours before Glean's Gong search
 returns the call, and only to the call's participants. So an email means the SA was on the call,
-and no calendar check is needed.
+and recaps need no calendar check.
 
-It uses only sign-ins the SA already has (Glean and Slack connectors, the Drive helper, `acli`). Never read or print anything in `~/.config/sa-skills/google/`,
+Each run also does **meeting prep** (step 10): it reads the SA's Google Calendar for meetings
+whose title names an Active customer, runs `customer-session-prep` for each one once, and tells
+the SA in Slack: "You have meetings today with <Customer> – prep: <link>".
+
+It uses only sign-ins the SA already has (Glean, Slack and Google Calendar connectors, the Drive
+helper, `acli`). Never read or print anything in `~/.config/sa-skills/google/`,
 `~/.config/acli/token.txt` or any `.env` file.
 
 ## Helpers
@@ -37,6 +42,10 @@ Write every helper command out in full; putting it in a shell variable breaks un
 | `gong-email --file PATH` | Reads a saved Gong "call is ready" email and prints its call ID, clean call link, title, account, date and duration |
 | `log add --kind activity\|audit --run RUN --text TEXT [--dry-run]` | Appends one line, stamped with the current time, to the run log `~/.config/sa-skills/recap-check-log.md` (one section per run) |
 | `slack-upload --url URL --file PATH` | Uploads a file's bytes to a Slack upload URL |
+| `meetings window` | The calendar range to read: now to the end of today, and from 20:00 on, to the end of the next working day too. Prints `start` and `end` (local time, no offset) and the `days` covered |
+| `meetings match --file PATH --folder ID` | Reads a saved `list_events` result and returns the meetings whose title names an Active customer (as a whole word, Customer or Documentation name), soonest first. Leaves out cancelled, all-day and declined events. Each has `event_id`, `title`, `start`, `customer`, `local_folder`, `folder_id`, `internal` (everyone else is from the SA's own email domain), `accepted` (name, email, `LD` or `customer`; not the SA, not rooms), `before` (the prepped-meetings entry, or null) and `moved` (prepped before for another day) |
+| `meetings get --id ID` / `meetings mark --id ID --status S ...` / `meetings held` | The prepped-meetings log in `~/.config/sa-skills/prepped-meetings.json`. Statuses: `prepped`, `held`, `error`, `skipped`, `dry-run`. Options: `--customer`, `--title`, `--start`, `--doc`, `--link`, `--note`, `--slack-ts` |
+| `drive-folder ensure --parent ID --name NAME` | Returns the folder NAME inside that folder, creating it if the helper hasn't made one there yet |
 
 `calls mark` options: `--customer`, `--date`, `--title`, `--url`, `--duration`, `--note`,
 `--slack-ts`, `--missing <links, comma-separated>` (`none` clears it), `--reminded
@@ -49,7 +58,10 @@ the `customer-meeting-recap` skill.
 **Settings** (`config get`): `sa_drive_folder` (folder ID of the SA's Drive folder, holding the
 Active Customers Doc), `customers_dir`, `recap_check_mode` (`dry-run` or `live`;
 missing means `dry-run`), `slack_user_id` and `slack_dm_channel` (found by the run), and
-`gong_emails_since` (when the last run looked for Gong emails, set by the run).
+`gong_emails_since` (when the last run looked for Gong emails, set by the run). For meeting prep:
+`meeting_prep` (`on` or `off`; missing means `on`), `misc_drive_folder` (folder ID of the SA's
+Misc folder in Drive, from the SA) and `internal_preps_folder` (the "Internal Preps" folder inside
+it, made by the run). Meeting prep follows `recap_check_mode`.
 
 ## Set up the check (when the SA asks)
 
@@ -63,6 +75,11 @@ Do these in order, telling the SA what each step did.
    link (the customer's Drive folder), Slack channels, Gong account, and Status Active. Every
    customer skill reads it, as the recap skill's "Active Customers Doc" section says.
 3. **Slack self-DM.** Find it as "Slack self-DM" below describes, and save it.
+   **Misc folder.** If `config get misc_drive_folder` is empty, ask the SA for the link to their
+   Misc folder in Drive (internal meeting preps go to an "Internal Preps" folder inside it), and
+   save its ID with `config set misc_drive_folder <ID>`. The Drive helper only sees what it
+   created, so it can't find the folder by name. If the SA has none, skip this: the check asks in
+   Slack the first time it preps an internal meeting.
 4. **Mode.** Set `config set recap_check_mode dry-run` unless the SA asks for live.
 5. **Schedule.** The task runs in this session's folder, for good, so first check it: it must be
    the SA's clone of the `ai-sa-skills` repo. If it's anywhere else (a customer folder, another
@@ -95,10 +112,15 @@ Do these in order, telling the SA what each step did.
      permission.
    - It starts in **dry run**: for a week it only reports what it would do. To go live, they
      ask "switch the recap check to live".
+   - Meeting prep is on: each meeting whose title names an Active customer gets a prep once, on
+     the day (and from the 20:00 run, the evening before). To stop it, they ask "turn off meeting
+     prep".
 
 **Other requests:**
 
 - **Switch to live / back to dry run:** `config set recap_check_mode live` (or `dry-run`).
+- **Turn meeting prep off / on:** `config set meeting_prep off` (or `on`).
+- **Set the Misc folder:** `config set misc_drive_folder <ID from the SA's link>`.
 - **Pause or resume:** the scheduled-tasks tool `update_scheduled_task` on `customer-recap-check`.
 - **Run it now:** do one run of "Each run" below, in this session.
 - **What did it do?** Read the run log, `~/.config/sa-skills/recap-check-log.md` (newest run
@@ -137,7 +159,7 @@ with the same first line.
 ## Each run
 
 Keep a **run ID**, the local start time as `YYYYMMDD-HHMM`. Also note the start time in UTC
-(`date -u +%Y-%m-%dT%H:%M:%SZ`) for step 10. Log as you go, in the one local run log: an **activity**
+(`date -u +%Y-%m-%dT%H:%M:%SZ`) for step 11. Log as you go, in the one local run log: an **activity**
 line for each step and tool call (`log add --kind activity`), and an **audit** line for each
 change made in Drive, Jira or Slack (`log add --kind audit`). Logs never go to Drive. In dry-run mode, add `--dry-run` to every log line.
 `log add` stamps each line with the time it runs, so run it right after the step or tool call it
@@ -187,6 +209,12 @@ after the last follow-up the check posted in that thread).
 
 A reply can hold a share link and other links at once: handle each. The share link never goes
 in `CLAUDE.md`, the recap Doc or the log; log only "share link received".
+
+Then `meetings held`. For each meeting with a `slack_ts` whose note is `misc_folder`: read its
+thread the same way. A Drive folder link from the SA is their Misc folder: `config set
+misc_drive_folder <its ID>`, and reply "Saved your Misc folder: internal preps go to Internal
+Preps inside it". Step 10 then preps the meeting. A meeting held for `drive_folder` needs no
+reply: step 10 retries it once the customer's row has a Folder link.
 
 **4. Active customers.** `customers read --folder <sa_drive_folder>`. It returns only rows whose
 Status is Active (any case); never work on any other customer. Then, in live mode, run
@@ -330,6 +358,68 @@ a share link and the status is `added`. Don't retry a `held` or `error` on a lat
 except once after the SA's reply fills in the recap (step 3). Never run it in dry-run mode, or
 for a recap that isn't `done`.
 
-**10. Finish.** `config set gong_emails_since <this run's start time in UTC>`. Log the
-run's end with a one-line summary (emails found, done, held, waiting, skipped). When the run
-found nothing new, post nothing and send no notification.
+**10. Meeting prep.** Skip this step if `meeting_prep` is `off`. It preps each meeting that
+names an Active customer once, on the day, and from the 20:00 run on, the evening before.
+
+1. `meetings window`. Read the SA's own calendar with the Google Calendar connector's
+   `list_events`: `startTime` and `endTime` from the window, `orderBy` `startTime`, `pageSize`
+   100 (page with `pageToken` if there's more). Write the result to `<scratchpad>/calendar.json`
+   if it came back inline. No calendar connector, or it fails: log it, and skip this step.
+2. `meetings match --file <that file> --folder <sa_drive_folder>`. Work only on what it returns:
+   a meeting whose title doesn't name an Active customer is never prepped, opened or posted about.
+3. Keep the meetings that need a prep: `before` is null, `before.status` is `held`, or `moved` is
+   true. Skip the rest (already `prepped`, `skipped` or `error`; in dry-run mode, also `dry-run`).
+   At most **5 per run**, soonest first; the rest wait for the next run.
+4. **Where the prep goes:**
+   - **Customer meeting** (`internal` false): the customer's Drive folder (`folder_id`, else the
+     opportunity's Drive folder in `CLAUDE.md`). None: `meetings mark --status held --note
+     drive_folder`. If the meeting had no `slack_ts` yet, post once: "Can't prep *<title>*
+     (<date> <time>) with *<Customer>*: there's no Drive folder for <Customer>. Add its Folder
+     link in the Active Customers Doc, and I'll prep it on the next run." Save that post's `ts`
+     with `--slack-ts`.
+   - **Internal meeting** (`internal` true: only LaunchDarkly people): the SA's Internal Preps
+     folder. If `internal_preps_folder` is empty: with `misc_drive_folder` set, run `drive-folder
+     ensure --parent <misc_drive_folder> --name "Internal Preps"`, save its ID with `config set
+     internal_preps_folder <ID>`, and log an audit line if it was created. With no
+     `misc_drive_folder`: `meetings mark --status held --note misc_folder`, and if it had no
+     `slack_ts` yet, post once: "Can't save the internal prep for *<title>* (<date> <time>): reply
+     in this thread with the link to your Misc folder in Drive, and I'll make an Internal Preps
+     folder in it." Save that post's `ts`.
+5. **Prep it.**
+   - **Dry run:** don't run the prep. `meetings mark --status dry-run --customer <Customer>
+     --title <title> --start <start>`, and list it in the Slack post below with "Dry run: would
+     prep".
+   - **Live:** the customer's local folder is `<customers_dir>/<local_folder>` (create it as step
+     6 says if it's missing). Run the `customer-session-prep` skill with:
+
+     ```text
+     UNATTENDED RUN
+     Customer folder: <customers_dir>/<local_folder>
+     Meeting: <title>, <YYYY-MM-DD HH:MM> (<time zone>)
+     Calendar event: <calendar_link>
+     Accepted: <name or email> (<LD or customer>), ... (or "nobody yet")
+     Internal: <yes or no>
+     Save to Drive folder: <the folder from item 4>
+     ```
+
+     Read the `PREP_RESULT` block it ends with. `done`: `meetings mark --id <event_id> --status
+     prepped --customer <Customer> --title <title> --start <start> --doc <id> --link <link>`, and
+     an audit line naming the Doc. `held`: `meetings mark --status held --note <needs>`. `error`:
+     `meetings mark --status error --note <error>`; it isn't retried, and the Slack post below
+     names it.
+6. **Tell the SA.** If this run prepped anything, post **one** message to Slack (not in a
+   thread), grouped by day, soonest first:
+
+   > You have meetings today with *Acme* and *Globex*:
+   > - 09:30 *Internal connect - Acme* (internal) – prep: <link>
+   > - 11:00 *Globex <> LD: SDK review* – prep: <link>
+   >
+   > Tomorrow (2026-11-10), with *Acme*:
+   > - 08:00 *LD + Acme Weekly Sync* – prep: <link>
+
+   Add a line for each `error` ("Couldn't prep *<title>*: <error>"). No Claude notification for
+   this post. Nothing prepped: post nothing. Delete `<scratchpad>/calendar.json`.
+
+**11. Finish.** `config set gong_emails_since <this run's start time in UTC>`. Log the
+run's end with a one-line summary (emails found, done, held, waiting, skipped, meetings
+prepped). When the run found nothing new, post nothing and send no notification.
