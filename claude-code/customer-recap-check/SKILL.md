@@ -20,8 +20,8 @@ Each run also does **meeting prep** (step 10): it reads the SA's Google Calendar
 whose title names an Active customer, runs `customer-session-prep` for each one once, and tells
 the SA in Slack: "You have meetings today with <Customer> – prep: <link>".
 
-It uses only sign-ins the SA already has (Glean, Slack and Google Calendar connectors, the Drive
-helper, `acli`). Never read or print anything in `~/.config/sa-skills/google/`,
+It uses only sign-ins the SA already has (Glean, Slack, Google Calendar and Zoom connectors, the
+Drive helper, `acli`). Never read or print anything in `~/.config/sa-skills/google/`,
 `~/.config/acli/token.txt` or any `.env` file.
 
 ## Helpers
@@ -261,8 +261,8 @@ For each email kept, in order:
    > Saw the Gong meeting *<title>* with *<Customer>* (<date>). Internal link: <call_url>
    > To share the recording with the customer, open the link, click **Share**, create a link for
    > people outside LaunchDarkly, and reply in this thread with it (or reply "no link"). I'll add
-   > it to this meeting in the Master Engagement Doc. The recap follows once the transcript is in
-   > Glean.
+   > it to this meeting in the Master Engagement Doc. The recap follows once the transcript is
+   > ready.
 
    Then `calls mark --id <gong_call_id> --status waiting --slack-ts <ts> --share-link pending`.
    No Claude notification for this post. In dry-run mode, post it with "Dry run:" in front and
@@ -293,14 +293,23 @@ the calls left oldest first, at most 5 (with those resumed in step 3). A call wi
 2. `python3 {{SKILLS_DIR}}/customer-meeting-recap/scripts/gong_transcript.py --file <saved
    result> --out <scratchpad>/<customer>-<date>-transcript.txt`. It writes the transcript and
    prints its length in `minutes`.
-3. **Not ready** (no content, the helper prints an error, or `minutes` is under half the call's
-   `duration`): log "waiting for transcript" and leave it for the next run. Post nothing: the
-   step 5 post already told the SA the recap follows. First seen more than
-   2 days ago: post once to Slack ("*<Customer>* call *<title>* (<date>): no transcript in Glean
-   after 2 days; recap it by hand"), and `calls mark --status error --note
-   "no transcript after 2 days"`.
+3. **Not in Glean yet** (no content, the helper prints an error, or `minutes` is under half the
+   call's `duration`): try **Zoom** for the same meeting, as the recap skill's Step 2, item 3
+   says. Search Zoom (`datasource: zoom_meeting`) for the call's `title`, take the record on its
+   `date` that started closest to the call (within 30 minutes), read it with
+   `get_meeting_assets`, and run `zoom_transcript.py --file <saved result> --out
+   <scratchpad>/<customer>-<date>-transcript.txt`. It counts as ready when it prints utterances
+   and its `minutes` is at least half the call's `duration` (or `minutes` is null, for an AI
+   Companion transcript, which Zoom writes once it's complete). Log "transcript from Zoom". No
+   Zoom connector, no matching meeting, or no transcript there: carry on to item 4.
+4. **Not ready** anywhere: log "waiting for transcript" and leave it for the next run. Post
+   nothing: the step 5 post already told the SA the recap follows. First seen more than 2 days
+   ago: post once to Slack ("*<Customer>* call *<title>* (<date>): no transcript in Glean or
+   Zoom after 2 days; recap it by hand"), and `calls mark --status error --note "no transcript
+   after 2 days"`.
 
-Never fall back to the email's Key points, Gong's call summary or Glean search snippets.
+Never fall back to the email's Key points, Gong's or Zoom's call summary, or Glean search
+snippets.
 
 **8. Recap it.**
 

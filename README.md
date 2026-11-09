@@ -53,6 +53,7 @@ your own computer, where they can use:
 | For | They use | Why |
 |---|---|---|
 | Reading call transcripts, Salesforce, Drive, Jira and Slack | **Glean** (Claude connector) | Already searches everything you have access to |
+| Reading Zoom transcripts (Zoom calls, internal meetings, and Gong calls Glean doesn't have yet) | **Zoom** (Claude connector), your own Zoom account | Reads a meeting's cloud recording or AI Companion transcript, when Zoom kept one |
 | Knowing a call is ready to recap (recap check) | Gong's **"call is ready" email**, read from your Gmail through **Glean** | Arrives about two hours before Glean's Gong search finds the call, and only goes to people who were on it |
 | Creating Jira epics and tickets | **Atlassian CLI (`acli`)** with your Jira **API token** | Writes to Jira without an OAuth app, which company admins often block |
 | Saving and reading Google Docs | A small **Drive helper** (`gdrive.py`) with your own Google **OAuth client** | Writes real Google Docs into the customer's folder, and can only touch the Docs it created |
@@ -132,8 +133,10 @@ It doesn't look at earlier engagements, older folders or the customer's other Go
 
 You say something like *"Recap this call: \<Gong link\>"*, or paste a transcript.
 
-1. **Reads the whole call.** From your paste, or the full Gong transcript through Glean, never
-   Gong's summary. It works out who each speaker is.
+1. **Reads the whole call.** From your paste, the full Gong transcript through Glean, or the
+   Zoom transcript (a Zoom link, or a Gong call that isn't in Glean yet), never Gong's or Zoom's
+   summary. It works out who each speaker is. A transcript from your paste or Zoom is also saved
+   to Drive, as `<Customer> – Transcript – <date> – <title>`, since Zoom can delete recordings.
 2. **Asks once for any missing link** (Drive folder, Salesforce, Vitalstatistix, session plan,
    the customer's Slack channels) in one message, in chat and in your Slack self-DM, and waits
    for your answer before it saves anything. Answer in either place. If you don't answer, the
@@ -191,7 +194,9 @@ people yourself.
 
 For internal meetings about a customer (an internal connect with the AE, a PS handoff, an account
 team sync), often on Zoom with no recording or transcript. You write your own notes, open the
-customer's Code session, run `/customer-internal-notes` and paste them. It:
+customer's Code session, run `/customer-internal-notes` and paste them. If the meeting was on
+Zoom and Zoom kept a transcript (AI Companion or a cloud recording was on), it reads that too,
+and then your notes are optional. It:
 
 - **Adds the meeting to one ongoing Doc per customer,** `<Customer> – Internal Notes`, in the
   customer's Drive folder (the Folder link in your Active Customers Doc), **newest meeting on
@@ -199,8 +204,9 @@ customer's Code session, run `/customer-internal-notes` and paste them. It:
   everything else, including your edits. If that meeting is already there, it asks before
   replacing it. Each block has the attendees, a summary, what was discussed and decided, action
   items, and open questions.
-- **Writes only what your notes say.** It tidies the wording but adds no facts or due dates, and
-  marks anything unclear instead of guessing. The meeting's title and attendees come from your
+- **Writes only what your notes and the Zoom transcript say.** It tidies the wording but adds no
+  facts or due dates, and marks anything unclear instead of guessing. Your notes win over the
+  transcript, and Zoom's AI summary is never used on its own. The meeting's title and attendees come from your
   calendar (the meeting that day whose title names the customer), unless you give them.
 - **Creates Jira tickets under the customer's epic** for each LD action item, like the recap
   skill: **yours are assigned to you**; **anyone else's are unassigned**, titled with the owner's
@@ -275,9 +281,10 @@ silently. In dry-run mode, it only reports what it would change.
    about that call goes in the same thread.
 2. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
    each recap records, so a call is never recapped twice.
-3. **Waits for the full transcript** in Glean, and writes the recap only from it. If there's still
-   no transcript after 2 days, it posts once that you need to recap the call by hand, and stops
-   trying.
+3. **Waits for the full transcript** in Glean, and writes the recap only from it. While Glean
+   doesn't have it yet, it tries the same meeting's Zoom transcript, which is often ready sooner.
+   If there's still no transcript in either after 2 days, it posts once that you need to recap
+   the call by hand, and stops trying.
 4. **Runs `customer-meeting-recap` unattended,** at most 5 calls per run (the rest wait for the
    next run). It never stops to wait. Only a missing Drive
    folder holds the call, since there's nowhere to save the recap: it asks you in Slack, and
@@ -455,15 +462,16 @@ from this `CLAUDE.md`, only your settings and small logs stay on your computer, 
 
 ### Prerequisites
 
-- **Claude Code**, with the **Glean**, **Slack** and **Google Calendar** connectors switched on.
-  In claude.ai, **Settings → Connectors**, check all three are connected and enabled for Claude
-  Code:
+- **Claude Code**, with the **Glean**, **Slack**, **Google Calendar** and **Zoom** connectors
+  switched on. In claude.ai, **Settings → Connectors**, check all four are connected and enabled
+  for Claude Code:
 
   | Connector | What the skills use it for |
   |---|---|
   | **Glean** | Search and read: Gong's emails in your Gmail, call transcripts, the customer's Drive folder, Jira and Salesforce |
   | **Slack** | Read channel and read thread (your self-DM, and the customer channels you listed), and the two file-upload tools (get file upload URL, complete file upload), which is how it posts to your self-DM |
   | **Google Calendar** | List events on your own calendar: [meeting prep](#meeting-prep) finds the meetings that name an Active customer and who accepted them, and `customer-session-prep` finds the next session's attendees. It never changes your calendar |
+  | **Zoom** | Search and read your own Zoom meetings (`search`, `get_meeting_assets`): a meeting's transcript for the recap and internal notes skills, and for the recap check when Glean doesn't have a Gong call yet. Optional: without it, those steps are skipped |
 - **Your Gmail comes through Glean,** so no extra API, token or Gmail connector is needed. Your
   company connects Gmail to Glean, and Glean only returns what you can see yourself; the recap
   check uses it to find Gong's "call is ready" emails, and opens no other mail. Check that a
@@ -901,6 +909,7 @@ your IT team asks why it's set up this way.
 | **Slack** connector, posting by file share | ✅ Works | Tested: the recap check posts to your self-DM (as you) by sharing a small file with a message, and reads your replies |
 | **Slack** connector, reading a customer's channels | ✅ Works | The recap reads only the channels and chats you listed for that customer |
 | Jira through `acli` browser sign-in (`--web`) | ❌ Blocked | Approving in the browser still returns `access_denied`, most likely an admin policy on OAuth apps |
+| **Zoom** connector | ✅ Works | Tested: reads a meeting's assets, including a cloud recording's transcript with timestamps, and the AI Companion summary. A meeting has no transcript unless AI Companion or cloud recording was on, and Zoom's `has_transcript` search flag is often wrong, so the skills read the assets anyway |
 | **Google Calendar** connector | ✅ Works | Lists your own events with each attendee's answer (accepted, declined, no answer). Meeting prep only reads it |
 | Atlassian Rovo MCP connector | ❌ Blocked | Couldn't be connected. Probably the same admin policy |
 | Google Drive connector for Claude | ❌ Not enabled | Not available to Claude at the time of writing. Ask IT if that has changed |
@@ -948,7 +957,7 @@ your IT team asks why it's set up this way.
 | `docs/images/` | Screenshots used in this README |
 | `claude-code/customer-engagement-prep/` | The prep skill with the engagement's history: `SKILL.md` |
 | `claude-code/customer-session-prep/` | The quick prep skill: `SKILL.md` |
-| `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `scripts/gong_transcript.py` (Gong transcript → readable file), `references/` |
+| `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `scripts/gong_transcript.py` (Gong transcript → readable file), `scripts/zoom_transcript.py` (Zoom meeting → readable transcript, plus its AI summary and notes), `references/` |
 | `claude-code/customer-master-engagement-doc/` | The Master Engagement Doc skill: `SKILL.md`, `scripts/engagement_doc.py` (ledger of recaps already in each Doc); uses the recap skill's Drive helper |
 | `claude-code/customer-internal-notes/` | The internal notes skill: `SKILL.md`; uses the recap skill's Drive helper and Jira ticket script |
 | `claude-code/customer-recap-check/` | The automated workflows: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, the run log, Slack uploads, Gong emails, calendar meetings to prep, the Internal Preps folder) |
