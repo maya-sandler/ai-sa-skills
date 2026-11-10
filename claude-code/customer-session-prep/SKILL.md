@@ -93,8 +93,8 @@ How to reach each source is in `{{SKILLS_DIR}}/customer-meeting-recap/references
 
 1. **Recaps in the folder.** `list --folder <ID> --contains "Meeting Recap"`, then `read` each one,
    newest first. If there are none, say so and work from the session plan and `CLAUDE.md`. Also
-   read `<Customer> – Internal Notes` if it's there (`list --folder <ID> --contains "Internal
-   Notes"`): the SA's notes from internal meetings, with LD action items. Use it like a recap, but
+   read the `<Customer> – Internal Notes – <date>` Docs if there are any (`list --folder <ID>
+   --contains "Internal Notes"`, newest first): the SA's notes from internal meetings, one Doc each, with LD action items. Use it like a recap, but
    never quote it in a brief the customer could see.
 2. **Follow-ups still open.** From every recap's action-item tables and Next steps (older recaps
    call them Open questions), keep the items not marked done in a later recap's "Previous action

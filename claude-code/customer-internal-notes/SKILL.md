@@ -1,17 +1,17 @@
 ---
 name: customer-internal-notes
-description: Turn the SA's own notes from an internal LaunchDarkly meeting about a customer (only LD people), plus the meeting's Zoom transcript when Zoom kept one, into a block in the customer's ongoing internal notes Google Doc, "<Customer> – Internal Notes", in the customer's Drive folder, newest meeting on top, and create Jira tickets under the customer's epic for the LD action items (the SA's own assigned to the SA, anyone else's unassigned with the owner's name). Never customer-facing. Use when the user (a LaunchDarkly Solutions Architect) runs /customer-internal-notes, or pastes notes from an internal sync, internal connect or account team meeting and asks to write them up, add them to the internal notes, or make tickets from them, usually from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
+description: Turn the SA's own notes from an internal LaunchDarkly meeting about a customer (only LD people), plus the meeting's Zoom transcript when Zoom kept one, into a Google Doc for that meeting, "<Customer> – Internal Notes – <YYYY-MM-DD>", in the customer's Drive folder, and create Jira tickets under the customer's epic for the LD action items (the SA's own assigned to the SA, anyone else's unassigned with the owner's name). Never customer-facing. Use when the user (a LaunchDarkly Solutions Architect) runs /customer-internal-notes, or pastes notes from an internal sync, internal connect or account team meeting and asks to write them up, add them to the internal notes, or make tickets from them, usually from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
 ---
 
 # Customer Internal Notes (Claude Code)
 
 You are helping a LaunchDarkly Solutions Architect (SA) keep **one internal notes Doc per
-customer**: a running record of the internal meetings about that customer (with the AE, SE, CSM,
-PS or a specialist), where there's no recording to recap. The SA writes their own notes, pastes
+internal meeting**, dated, for the internal meetings about a customer (with the AE, SE, CSM,
+PS or a specialist) where there's no recording to recap. The SA writes their own notes, pastes
 them in chat, and this skill:
 
-1. Adds a block for the meeting to `<Customer> – Internal Notes` in the customer's Drive folder,
-   **newest meeting on top**, creating the Doc the first time.
+1. Saves the meeting as its own Doc, `<Customer> – Internal Notes – <YYYY-MM-DD>`, in the
+   customer's Drive folder (a second meeting on the same date adds ` – <meeting title>`).
 2. Creates a Jira ticket under the customer's epic for each LD action item in the notes.
 
 **It's internal only.** Never add any of it to the customer-facing Master Engagement Doc
@@ -70,13 +70,14 @@ delete them at the end. Nothing goes in the local customer folder except `CLAUDE
 
 ## Step 2: Read what came before
 
-1. `list --folder <ID> --contains "Internal Notes"`. If `<Customer> – Internal Notes` is there,
-   `read --id <its ID>` into `<scratchpad>/internal-notes.md`. Keep it exactly as it is, including
-   the SA's own edits: you only add a block at the top.
-2. **Same meeting already there?** A block with the same date and title: ask the SA whether to
-   replace that block or add a second one (named `<title> (2)`). Never replace one silently.
+1. `list --folder <ID> --contains "Internal Notes"`. These are the earlier internal meetings,
+   one Doc each, named with their date.
+2. **Same meeting already there?** A Doc named `<Customer> – Internal Notes – <meeting date>`:
+   if its title is the same meeting, ask the SA whether to replace it or add a second Doc (named
+   `<Customer> – Internal Notes – <meeting date> – <meeting title>`). If it's a different meeting
+   on the same date, use that second name. Never replace a Doc silently.
 3. Read the latest recap (`list --folder <ID> --contains "Meeting Recap"`, newest) and the
-   latest block in the Internal Notes, to resolve names and items the notes only hint at
+   newest earlier Internal Notes Doc (`read --id`), to resolve names and items the notes only hint at
    ("Alex's question from last week"). Use them only to clarify the notes, never to add topics.
 
 ## Step 3: Write the block
@@ -128,7 +129,7 @@ Rules:
      SA's board to follow up on.
    - In the description, **Background** says it came from the internal meeting (date, title,
      attendees), and the **Customer links** section's last line is `Source meeting: internal
-     notes, <YYYY-MM-DD> (<Customer> – Internal Notes)` instead of a recording link.
+     notes, <YYYY-MM-DD> (<Customer> – Internal Notes – <YYYY-MM-DD>)` instead of a recording link.
 4. Fill in each item's Jira column with its key, as a link
    (`[KEY-123](https://{{JIRA_SITE}}/browse/KEY-123)`).
 
@@ -137,18 +138,16 @@ tell the SA their API token needs to be renewed, as the recap skill says.
 
 ## Step 5: Save the Doc
 
-1. Put the Doc together in `<scratchpad>/internal-notes.md`:
-   - **New Doc:** the header below, then the block.
-   - **Existing Doc:** the new block goes right under the header, above the newest block; the rest
-     stays exactly as it was read.
+1. Put the Doc together in `<scratchpad>/internal-notes.md`: the header below, then the block.
+   If the SA chose to replace an existing Doc for the same meeting, this replaces its content.
 
    ```
-   # <Customer> – Internal Notes
-   Internal only: LaunchDarkly's notes from internal meetings about <Customer>, newest on top. Don't share with <Customer>.
+   # <Customer> – Internal Notes – <YYYY-MM-DD>
+   Internal only: LaunchDarkly's notes from an internal meeting about <Customer>. Don't share with <Customer>.
    ```
 
-2. `save --folder <ID> --name "<Customer> – Internal Notes" --file <scratchpad>/internal-notes.md`.
-   It updates the Doc if it exists. It stays private to the SA.
+2. `save --folder <ID> --name "<Customer> – Internal Notes – <YYYY-MM-DD>" --file <scratchpad>/internal-notes.md`
+   (add ` – <meeting title>` for a second meeting on the same date). It stays private to the SA.
 3. Delete the scratchpad files.
 
 ## Step 6: Report, and keep CLAUDE.md current
