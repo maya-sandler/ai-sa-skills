@@ -23,10 +23,10 @@ This repo includes:
 
 | Skill | What it does | How it runs |
 |---|---|---|
-| **`customer-meeting-recap`** | After a call, turns the recording or transcript into a recap Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the LaunchDarkly team committed to | **Manual:** you prompt it (`/customer-meeting-recap`). The recap check also runs it automatically |
-| **`customer-session-prep`** | Before a call, writes a one-page prep brief (a Google Doc in the same folder) from that folder's recaps, so you know in two minutes what to deliver, what's still open, what each attendee wants, and what to ask | **Manual:** you prompt it (`/customer-session-prep`). The recap check also runs it for each meeting on your calendar with an Active customer |
-| **`customer-engagement-prep`** | The same brief plus the engagement's history (earlier engagements, older folders, every Gong call), for a new engagement or an account you're picking up | **Manual:** you prompt it (`/customer-engagement-prep`) |
-| **`customer-master-engagement-doc`** | Adds each recap to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`, newest meeting on top, without Jira tickets or internal links | **Manual** (`/customer-master-engagement-doc`), and **automatic:** the recap check runs it after every recap |
+| **`customer-engagement-prep`** | Before a new engagement, or an account you're picking up: a fuller prep with the engagement's history (earlier engagements, older folders, every Gong call), the customer's business model and context design, and questions for the customer and the LD account team | **Manual:** you prompt it (`/customer-engagement-prep`) |
+| **`customer-session-prep`** | Before a call, writes a one-page prep brief (a Google Doc in the customer's Drive folder) from that folder's recaps and Internal Notes, so you know in two minutes what to deliver, what's still open, what each attendee wants, and what to ask | **Manual** (`/customer-session-prep`), and **automatic:** the [Meeting prep](#meeting-prep) workflow runs it for each meeting on your calendar that names an Active customer |
+| **`customer-meeting-recap`** | After a call, turns the recording or transcript into a recap Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the LaunchDarkly team committed to | **Manual** (`/customer-meeting-recap`), and **automatic:** the [Automatic recaps](#automatic-recaps) workflow runs it for each new call with an Active customer |
+| **`customer-master-engagement-doc`** | Adds each recap to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`, newest meeting on top, without Jira tickets or internal links | **Manual** (`/customer-master-engagement-doc`), and **automatic:** the [Automatic recaps](#automatic-recaps) workflow runs it after every recap |
 | **`customer-internal-notes`** | After an internal LD meeting about a customer (no recording needed), turns the notes you paste into a block in the customer's ongoing `<Customer> – Internal Notes` Doc, newest on top, and creates a Jira ticket for each LD action item | **Manual:** you prompt it (`/customer-internal-notes`) from the customer's session, and paste your notes |
 | **`customer-recap-check`** | Runs the three [workflows](#workflows) every hour: syncs your Active Customers Doc into each customer's `CLAUDE.md`, recaps new calls with your Active customers and updates the Master Engagement Doc, and preps your meetings with them, telling you in your Slack self-DM and asking there when links are missing | **Automatic workflows:** a scheduled task in the Claude desktop app, set up once ("set up the recap check") |
 
@@ -57,78 +57,18 @@ your own computer, where they can use:
 | Creating Jira epics and tickets | **Atlassian CLI (`acli`)** with your Jira **API token** | Writes to Jira without an OAuth app, which company admins often block |
 | Saving and reading Google Docs | A small **Drive helper** (`gdrive.py`) with your own Google **OAuth client** | Writes real Google Docs into the customer's folder, and can only touch the Docs it created |
 | Telling you a recap is ready, and asking you for missing links (recap check and recap) | **Slack** (Claude connector): posts to your self-DM by sharing a small file, reads your replies | The connector's file-sharing tools are the ones that can post; it never posts anywhere but your self-DM |
-| Knowing which meetings to prep, and who accepted (meeting prep) | **Google Calendar** (Claude connector), your own calendar only | Shows each meeting's title, time and every attendee's answer |
+| Knowing which meetings to prep and who accepted (meeting prep, session prep), and an internal meeting's title and attendees (internal notes) | **Google Calendar** (Claude connector), your own calendar only, read-only | Shows each meeting's title, time and every attendee's answer |
 | Running on a schedule (recap check) | A Claude Code **scheduled task** in the desktop app | Runs on your Mac with your sign-ins; nothing runs in the cloud |
 
 ## What each skill produces
 
-### `customer-meeting-recap`
-
-You say something like *"Recap this call: \<Gong link\>"*, or paste a transcript.
-
-1. **Reads the whole call.** From your paste, or the full Gong transcript through Glean, never
-   Gong's summary. It works out who each speaker is.
-2. **Asks once for any missing link** (Drive folder, Salesforce, Vitalstatistix, session plan,
-   the customer's Slack channels) in one message, in chat and in your Slack self-DM, and waits
-   for your answer before it saves anything. Answer in either place. If you don't answer, the
-   hourly recap check picks the call up from the Slack thread, as for its own calls. Links you
-   skip become `Not found`, and it lists them at the end.
-3. **Reads what came before.** The previous recap in the customer's Drive folder, so it can mark
-   earlier action items as done or still open, and the customer's Slack channels since the last
-   call, for follow-ups and promises. Channels are never named in the recap or tickets.
-4. **Writes the recap** and saves it as `<Customer> – Meeting Recap – <date>` in the Drive folder:
-   - Summary and what was discussed, including decisions
-   - Artifacts shared, plus relevant LaunchDarkly docs (only links it has confirmed exist)
-   - Scheduled meetings, with dates
-   - **Action items – LaunchDarkly team**, with owner, due date and Jira ticket
-   - **Action items – \<Customer\>**, with owner and due date
-   - **Next steps**: open questions (theirs and ours) and decisions still to make, never
-     repeating an action item
-   - The status of the previous recap's action items
-   - **Customer links**: opportunity, Salesforce, Drive folder, Vitalstatistix, Jira epic, team
-5. **Finds or creates the customer's Jira epic** (named after the customer, in Title Case) in your
-   own Jira project.
-6. **Creates one ticket per LaunchDarkly team action item**, skipping any that already exist:
-   - **Title:** `<Owner>: <short task>`, e.g. `Alex: Confirm Big Segments Need Persistent Store`.
-     No customer name, since the epic already says that.
-   - **Assignee:** you, if it's your task. Other people's tasks are left unassigned, so the name in
-     the title tells you it's one you only need to follow up on.
-   - **Description:** the ask, background, why it matters, a one-sentence definition of done,
-     and the customer links.
-
-### `customer-session-prep`
-
-The quick prep. You say something like *"Prep me for the next Acme session"*. It looks only at the
-customer's current Drive folder (the one you give, or the Folder link in your Active Customers
-Doc): the recaps in it, the follow-up items from them that are still open (checking their Jira
-tickets), the customer's support tickets, tech stack, session plan and links, and the Slack
-channels in your Active Customers Doc. It saves a one-page brief as
-`<Customer> – Session Prep – <session name> (<date or date TBD>)`:
-
-- Goal for the session and the latest status
-- **What the attendees want:** for each person who accepted the meeting in your calendar, what
-  they wanted to discuss, what LD owes them, and what they raised that wasn't agreed on yet, from
-  the recaps, your Jira tickets and the customer's Slack channels
-- **Deliver in \<session name\> (\<date or date TBD\>):** finished tickets to show or explain, and
-  open ones that are due
-- The customer's next steps and questions, each with a draft answer or a docs link
-- Action items to follow up on, split into the customer's items and LD's internal items
-- Support tickets, tech stack, and where the engagement stands in the session plan
-- All the links in one place, each labelled with the customer's name
-
-It finds the session and its attendees in your calendar (the next meeting whose title names the
-customer), unless you name the session. For an internal meeting (only LD people), it writes an
-internal prep instead. The [Meeting prep](#meeting-prep) workflow runs it for you before each
-meeting.
-
-It doesn't look at earlier engagements, older folders or the customer's other Gong calls. That's
-`customer-engagement-prep`.
-
 ### `customer-engagement-prep`
 
 The full prep, with the engagement's history: use it for a new engagement, or an existing customer
-(an existing logo) you're picking up. On top of what `customer-session-prep` reads, it searches the
-team's older Drive folders and every Gong call for the account, and saves
+(an existing logo) you're picking up. It reads the newest one or two recaps in the customer's
+Drive folder (or the latest Gong call, if it has no recap yet), searches the team's older Drive
+folders and every Gong call for the account, and checks your Jira tickets, the customer's support
+tickets, the session plan and internal account overviews. It saves
 `<Customer> – Engagement Prep and Next Session (<session name>, <date or date TBD>)`, for example
 `Acme Corp – Engagement Prep and Next Session (kickoff, date TBD)`:
 
@@ -154,20 +94,89 @@ Then, under **NEXT:**
 - **The plan for the session:** prep to do first, then the suggested engagement plan with what
   to show live and which customer pain each answers
 
-Both briefs use the customer's name and "LD" instead of "they" or "we", so they read clearly
-when you forward them.
+It doesn't read your calendar, your Internal Notes or the customer's Slack channels, and it has
+no "What the attendees want" section: for the next session's attendees, use
+`customer-session-prep`.
+
+### `customer-session-prep`
+
+The quick prep. You say something like *"Prep me for the next Acme session"*. It looks only at the
+customer's current Drive folder (the one you give, or the Folder link in your Active Customers
+Doc): the recaps and your `<Customer> – Internal Notes` Doc in it, the follow-up items from them
+that are still open (checking their Jira tickets), the customer's support tickets, tech stack,
+session plan and links, and the Slack channels in your Active Customers Doc. It saves a one-page
+brief as `<Customer> – Session Prep – <session name> (<date or date TBD>)`:
+
+- Goal for the session and the latest status
+- **What the attendees want:** for each person who accepted the meeting in your calendar, what
+  they wanted to discuss, what LD owes them, and what they raised that wasn't agreed on yet, from
+  the recaps, your Internal Notes, your Jira tickets and the customer's Slack channels
+- **Deliver in \<session name\> (\<date or date TBD\>):** finished tickets to show or explain, and
+  open ones that are due
+- The customer's next steps and questions, each with a draft answer or a docs link
+- Action items to follow up on, split into the customer's items and LD's internal items
+- Support tickets, tech stack, and where the engagement stands in the session plan
+- All the links in one place, each labelled with the customer's name
+
+It finds the session and its attendees in your calendar (the next meeting whose title names the
+customer), unless you name the session. For an internal meeting (only LD people), it writes an
+internal prep, `<Customer> – Internal Prep – <meeting title> (<date>)`, instead. Run by hand, it
+asks where to save an internal prep, suggesting your Internal Preps folder. The
+[Meeting prep](#meeting-prep) workflow runs it for you before each meeting.
+
+It doesn't look at earlier engagements, older folders or the customer's other Gong calls. That's
+`customer-engagement-prep`. Both briefs use the customer's name and "LD" instead of "they" or
+"we", so they read clearly when you forward them.
+
+### `customer-meeting-recap`
+
+You say something like *"Recap this call: \<Gong link\>"*, or paste a transcript.
+
+1. **Reads the whole call.** From your paste, or the full Gong transcript through Glean, never
+   Gong's summary. It works out who each speaker is.
+2. **Asks once for any missing link** (Drive folder, Salesforce, Vitalstatistix, session plan,
+   the customer's Slack channels) in one message, in chat and in your Slack self-DM, and waits
+   for your answer before it saves anything. Answer in either place. If you don't answer, the
+   hourly recap check picks the call up from the Slack thread, as for its own calls (for a Gong
+   call, once the recap check is set up). Links you skip become `Not found`, and it lists them
+   at the end.
+3. **Reads what came before.** The previous recap in the customer's Drive folder, so it can mark
+   earlier action items as done or still open, and the customer's Slack channels since the last
+   call, for follow-ups and promises. Channels are never named in the recap or tickets.
+4. **Writes the recap** and saves it as `<Customer> – Meeting Recap – <date>` in the Drive folder.
+   Rerunning it for the same call updates that Doc; a second call on the same day gets its own
+   recap, `<Customer> – Meeting Recap – <date> – <meeting title>`. The recap has:
+   - Summary and what was discussed, including decisions
+   - Artifacts shared, plus relevant LaunchDarkly docs (only links it has confirmed exist)
+   - Scheduled meetings, with dates
+   - **Action items – LaunchDarkly team**, with owner, due date and Jira ticket
+   - **Action items – \<Customer\>**, with owner and due date
+   - **Next steps**: open questions (theirs and ours) and decisions still to make, never
+     repeating an action item
+   - The status of the previous recap's action items
+   - **Customer links**: opportunity, Salesforce, Drive folder, Vitalstatistix, Jira epic, team
+5. **Finds or creates the customer's Jira epic** (named after the customer, in Title Case) in your
+   own Jira project.
+6. **Creates one ticket per LaunchDarkly team action item**, skipping any that already exist:
+   - **Title:** `<Owner>: <short task>`, e.g. `Alex: Confirm Big Segments Need Persistent Store`.
+     No customer name, since the epic already says that.
+   - **Assignee:** you, if it's your task. Other people's tasks are left unassigned, so the name in
+     the title tells you it's one you only need to follow up on.
+   - **Description:** the ask, background, why it matters, a one-sentence definition of done,
+     and the customer links.
 
 ### `customer-master-engagement-doc`
 
 The Doc you share with the customer. You say something like *"Update the Master Engagement Doc
-for Acme"*, or the recap check runs it after each automatic recap. It keeps one Google Doc per
-opportunity, `<Customer>-LaunchDarkly Master Engagement Doc`, in the opportunity's Drive folder:
+for Acme"*, or the [Automatic recaps](#automatic-recaps) workflow runs it after each recap. It
+keeps one Google Doc per opportunity, `<Customer>-LaunchDarkly Master Engagement Doc`, in the
+opportunity's Drive folder:
 
 - **One block per meeting, newest on top,** each with the same sections as the recap: summary,
   what was discussed, artifacts, scheduled meetings, both sides' action items, and next steps.
 - **Everything internal is left out:** Jira tickets and keys, Salesforce, Vitalstatistix, Slack
   and internal Drive links, the internal Gong link, internal-only tasks and deal notes. Public
-  docs links stay.
+  docs links stay. Your Internal Notes never go in it.
 - **A Gong share link,** if you made one and replied with it in Slack, goes on the meeting's
   **Recording** line.
 - **It only copies from the recaps** in the Drive folder, never rewording or adding anything. To
@@ -187,8 +196,9 @@ customer's Code session, run `/customer-internal-notes` and paste them. It:
 - **Adds the meeting to one ongoing Doc per customer,** `<Customer> – Internal Notes`, in the
   customer's Drive folder (the Folder link in your Active Customers Doc), **newest meeting on
   top**. The first run creates the Doc; later runs add a block above the last one and keep
-  everything else, including your edits. Each block has the attendees, a summary, what was
-  discussed and decided, action items, and open questions.
+  everything else, including your edits. If that meeting is already there, it asks before
+  replacing it. Each block has the attendees, a summary, what was discussed and decided, action
+  items, and open questions.
 - **Writes only what your notes say.** It tidies the wording but adds no facts or due dates, and
   marks anything unclear instead of guessing. The meeting's title and attendees come from your
   calendar (the meeting that day whose title names the customer), unless you give them.
@@ -208,9 +218,17 @@ on each run is in [Workflows](#workflows) below.
 
 ## Workflows
 
-The skills above run when you ask. The **workflows** run on their own: one hourly scheduled task
-in the Claude desktop app (`customer-recap-check`) does all three on every run, and you don't
-prompt anything:
+You can run any of the skills above yourself. The **workflows** also run some of them for you,
+on their own: one hourly scheduled task in the Claude desktop app (`customer-recap-check`) does
+all three on every run, and you don't prompt anything:
+
+| Workflow | Runs these skills for you |
+|---|---|
+| Automatic recaps | `customer-meeting-recap`, then `customer-master-engagement-doc` |
+| Meeting prep | `customer-session-prep` |
+
+The others, `customer-engagement-prep` and `customer-internal-notes`, only run when you ask.
+What each workflow does:
 
 | Workflow | What it does | Where it reports |
 |---|---|---|
@@ -225,8 +243,9 @@ the only trigger.
 
 **Slack.** Every workflow posts only to your Slack self-DM. To answer a question it asks, reply
 in that post's thread; the next hourly run reads your reply. Slack doesn't notify you about posts
-made as you, so a post you need to act on also comes with a Claude notification on your Mac and
-phone.
+made as you, so "recap ready", held and failed recaps also come with a Claude notification on
+your Mac and phone (when the app can send one). The "Saw the meeting" post and the meeting prep
+post don't.
 
 **Log.** Every run logs each step as it happens, with its own time, to one Markdown file on your
 Mac, `~/.config/sa-skills/recap-check-log.md`: a section per run, with an **activity** line for
@@ -235,10 +254,11 @@ The run ends with a one-line summary. Nothing is logged to Drive.
 
 ### Active Customers sync
 
-Each run first reads your Active Customers Doc (see "Your Active Customers Doc" below) and works
-only on the rows marked Active, in all three workflows. It copies every row into its customer's
-`CLAUDE.md`, and creates the folder for a new Active customer. When there's no Active Customers
-Doc, it's skipped silently.
+Each run first reads your Active Customers Doc (see "Your Active Customers Doc" below). The other
+two workflows work only on the rows marked Active. The sync copies each row into its customer's
+`CLAUDE.md`, and creates the folder for a new Active customer. A customer that isn't Active is
+updated only if its folder already exists. When there's no Active Customers Doc, it's skipped
+silently. In dry-run mode, it only reports what it would change.
 
 ### Automatic recaps
 
@@ -247,7 +267,7 @@ Doc, it's skipped silently.
    emails whose Gong account exactly matches an Active row. Anything else is skipped silently, so
    other calls make no work. Gong sends one to each participant when a call's recording is ready,
    so it knows you were on the call. It reads only the call link, account, date and duration from
-   each email. A call whose email arrives by about 21:00 is recapped the same day, and a later one
+   each email. A call that ends by about 20:00 is usually recapped the same day, and a later one
    at the first check of the next weekday.
    **For each new call, it posts once in your Slack self-DM** that it saw the meeting, with the
    internal Gong link, and asks you to create a share link for the customer in Gong (click
@@ -255,8 +275,11 @@ Doc, it's skipped silently.
    about that call goes in the same thread.
 2. **Skips calls already recapped,** using a processed-calls log on your Mac and the Gong call ID
    each recap records, so a call is never recapped twice.
-3. **Waits for the full transcript** in Glean, and writes the recap only from it.
-4. **Runs `customer-meeting-recap` unattended:** it never stops to wait. Only a missing Drive
+3. **Waits for the full transcript** in Glean, and writes the recap only from it. If there's still
+   no transcript after 2 days, it posts once that you need to recap the call by hand, and stops
+   trying.
+4. **Runs `customer-meeting-recap` unattended,** at most 5 calls per run (the rest wait for the
+   next run). It never stops to wait. Only a missing Drive
    folder holds the call, since there's nowhere to save the recap: it asks you in Slack, and
    reminds you at most once a day. Anything else missing (which opportunity it is, Salesforce,
    Vitalstatistix, session plan, Slack channels) doesn't hold it: the recap and tickets are made
@@ -272,7 +295,8 @@ Doc, it's skipped silently.
    Engagement Doc, or a question you answer by replying in the thread. A Gong share link you
    reply with is added to that meeting in the Master Engagement Doc (straight away if the meeting
    is already there, otherwise with the recap), and the check confirms in the thread. The next
-   run reads your reply and finishes the call.
+   run reads your reply and finishes the call. A recap that fails is reported once and not tried
+   again: recap it by hand.
 
 What each hourly run does for recaps, in live mode:
 
@@ -305,7 +329,8 @@ link goes in the call's thread too; it's added only to the Master Engagement Doc
 
 **Not in the diagram:** you can still run `/customer-meeting-recap` yourself at any time, for
 example for a call the check skipped. It asks you for missing links in chat and in your self-DM,
-and if you don't answer, the next hourly run finishes the call from the Slack thread.
+and if you don't answer, the next hourly run finishes the call from the Slack thread (for a Gong
+call).
 
 ### Meeting prep
 
@@ -317,9 +342,9 @@ self-DM, in one post:
 > - 09:30 *Internal connect - Acme* (internal) – prep: \<link\>
 > - 11:00 *Globex <> LD: SDK review* – prep: \<link\>
 
-Each prep has everything a `customer-session-prep` brief has, plus **What the attendees want**:
-for each person who accepted the meeting, what they wanted to discuss, what LD owes them, and
-what they raised that wasn't discussed and agreed on later, each with where it came from.
+Each prep is a normal `customer-session-prep` brief, with **What the attendees want** filled in
+from the meeting's accepted attendees: what each wanted to discuss, what LD owes them, and what
+they raised that wasn't discussed and agreed on later, each with where it came from.
 
 How it decides:
 
@@ -328,11 +353,11 @@ How it decides:
 | Which meetings | Those whose **title names an Active customer** (its Customer or Documentation name, as a whole word). Cancelled meetings, all-day events and meetings you declined are left out. Other meetings are never read further |
 | When | Every hourly run preps the meetings from now to the end of today. **From the 20:00 run on, it also preps the next working day's** (Friday evening: Monday's), so the prep is ready the evening before. Each meeting is prepped **once**, and again only if it moves to another day. At most 5 per run; the rest wait for the next run |
 | Customer meeting | At least one attendee from outside LaunchDarkly: the prep is saved in the **customer's Drive folder**, as `<Customer> – Session Prep – <meeting title> (<date>)` |
-| Internal meeting | Only LaunchDarkly people (`@launchdarkly.com`) besides you: an **internal prep**, focused on what to align on as the LD team, saved in **Misc → Internal Preps** in your Drive, as `<Customer> – Internal Prep – <meeting title> (<date>)`. The check creates the Internal Preps folder the first time. It needs your Misc folder's link once (the Drive helper can't find folders it didn't create), which setup or a Slack post asks you for |
+| Internal meeting | Only people from your own email domain (LaunchDarkly) besides you: an **internal prep**, focused on what to align on as the LD team, saved in **Misc → Internal Preps** in your Drive, as `<Customer> – Internal Prep – <meeting title> (<date>)`. The check creates the Internal Preps folder the first time. It needs your Misc folder's link once (the Drive helper can't find folders it didn't create), which setup or a Slack post asks you for |
 | Whose items | Only the people who **accepted** the invitation, not those who declined or haven't answered, and not meeting rooms |
-| Where it looks for their items | The **recaps** in the customer's Drive folder, your **Jira** tickets on the customer's epic, and the customer's **Slack channels** from your Active Customers Doc. No email |
-| Still open | An item counts only if no later recap marks it done, or records it as discussed and agreed |
-| Mode | Follows the recap check's mode, so it's live once the recap check is. In dry-run mode it only posts which meetings it would prep |
+| Where it looks for their items | The **recaps** and your **Internal Notes** in the customer's Drive folder, your **Jira** tickets on the customer's epic, and the customer's **Slack channels** from your Active Customers Doc. No email |
+| Still open | An item counts only if no later recap or Internal Notes block marks it done, or records it as discussed and agreed |
+| Mode | Follows the recap check's mode, so it's live once the recap check is. In dry-run mode it only posts which meetings it would prep, and notes a missing Drive or Misc folder there instead of asking |
 | Asking you | Never, except once in Slack when there's nowhere to save a prep: no Drive folder for the customer (add its Folder link in the Active Customers Doc), or no Misc folder yet (reply in the thread with its link) |
 | Turning it off | Say "turn off meeting prep" (or "turn on meeting prep") |
 
@@ -350,9 +375,12 @@ anything. **The check starts in dry-run mode when you set it up,** and stays in 
   emails, and skips calls already done, exactly as in live mode. Then, instead of the recap, it
   posts one message per call in your self-DM: "Dry run: would recap *\<title\>* with
   \<Customer\> and add it to the Master Engagement Doc; links missing: \<links\>". For meeting
-  prep, it posts which meetings it would prep.
-- **What it doesn't do:** it writes no recap or prep, creates no Jira tickets, doesn't touch the
-  Master Engagement Doc, and asks no questions. Its log lines are marked "dry run".
+  prep, it posts which meetings it would prep. The Active Customers sync only reports what it
+  would change.
+- **What it doesn't do:** it writes no recap or prep, creates no Jira tickets or folders, doesn't
+  change any `CLAUDE.md`, doesn't touch the Master Engagement Doc, and asks no questions: its
+  "Saw the meeting" posts start with "Dry run:", and replies to them aren't read. Its log lines
+  are marked "dry run".
 - **What it's for:** checking that your Active Customers rows (Gong account, Folder link) find the
   right calls and meetings, and that the links each recap needs are in place, before anything is
   created.
@@ -384,12 +412,14 @@ know:
 
 **Changes flow into `CLAUDE.md` automatically.** Every hourly recap check copies each row into
 its customer's `CLAUDE.md`, in a section called "From the Active Customers Doc", and creates the
-folder and `CLAUDE.md` for a new Active customer. So edit the Doc, not that section: an edit
-reaches `CLAUDE.md` within the hour (during the check's hours). The rest of `CLAUDE.md`
+folder and `CLAUDE.md` for a new Active customer (in dry-run mode, it only reports what it would
+change). So edit the Doc, not that section: an edit reaches `CLAUDE.md` within the hour (during
+the check's hours, once it's live). The rest of `CLAUDE.md`
 (opportunities, team, calls) is never touched by this. With no Active Customers Doc in your
 folder, the sync is skipped silently and no `CLAUDE.md` changes. If the two disagree, the Doc wins. A customer that isn't in the Doc, or isn't Active, gets a message
-asking you to mark it Active, and nothing else. `install.sh` creates the Doc (its last question), and
-"set up the recap check" creates it if it's still missing. Without it, the skills work from
+asking you to mark it Active, and nothing else. `install.sh` creates the Doc in the folder you
+give at question 5, once you're signed in to Google Drive, and "set up the recap check" creates
+it if it's still missing. Without it, the skills work from
 `CLAUDE.md` alone.
 
 ## How it keeps track of each customer
@@ -417,8 +447,9 @@ book, not notes: the customer's Jira epic, team, latest call and tech stack, and
   adds a new entry and asks, link by link, whether to reuse an existing opportunity's link or use
   a new one.
 
-Everything the skills *produce* (recaps, briefs, transcripts) goes to Google Drive. Nothing but
-this `CLAUDE.md` is kept on your computer.
+Everything the skills *produce* (recaps, briefs, notes, transcripts) goes to Google Drive. Apart
+from this `CLAUDE.md`, only your settings and small logs stay on your computer, in
+`~/.config/sa-skills/`.
 
 ## Install
 
@@ -520,7 +551,8 @@ It asks these questions. Each one suggests a value: press **Enter** (or type `y`
 After question 6 it shows **"Please confirm your selections"**, with every answer and your Jira
 project key.
 Check them, then press **Enter** to install, or type `n` to stop without changing anything.
-An answer that doesn't fit (a "yes" where a folder or site should be) is asked again, never saved.
+An answer that doesn't fit (random text where a folder path, Drive folder link or site should
+be) is asked again, never saved. **Enter**, `y` or `yes` keeps the suggested or saved value.
 
 **Question 7, the automated workflows.** After installing, it asks whether to turn on the
 hourly recap check, which runs all three [workflows](#workflows) (Active Customers sync,
@@ -557,7 +589,7 @@ choose **Auto**:
 
 | Already there | What the installer does |
 |---|---|
-| The installed skills it installs (`customer-meeting-recap`, `customer-session-prep`, `customer-engagement-prep`, `customer-recap-check`, `customer-master-engagement-doc`, `customer-internal-notes`) in the skills folder | **Replaced** with this repo's copy. Any edits you made to the installed copy are lost: edit `claude-code/` instead |
+| The installed skills it installs (`customer-engagement-prep`, `customer-session-prep`, `customer-meeting-recap`, `customer-master-engagement-doc`, `customer-internal-notes`, `customer-recap-check`) in the skills folder | **Replaced** with this repo's copy. Any edits you made to the installed copy are lost: edit `claude-code/` instead |
 | `customer-shared-notes`, the old name of `customer-master-engagement-doc` | **Removed**, since the same skill is installed under its new name. Its ledger, `~/.config/sa-skills/shared-notes.json`, keeps its name and contents, so no meeting is added to a Master Engagement Doc twice |
 | Other skills in the same skills folder | Left alone |
 | Your customer folders and each customer's `CLAUDE.md` | Left alone. It only creates the top folder if it's missing |
@@ -758,20 +790,20 @@ Type the skill as a slash command, followed by whatever you have for this call:
 
 | Command | When |
 |---|---|
-| `/customer-meeting-recap` | After a call: recap Doc + Jira tickets |
-| `/customer-session-prep` | Before a call: one-page prep brief from the current folder's recaps |
 | `/customer-engagement-prep` | Before a call, with the engagement's history: new engagements and accounts you're picking up |
+| `/customer-session-prep` | Before a call: one-page prep brief from the current folder's recaps and Internal Notes (meeting prep does this for you before each meeting) |
+| `/customer-meeting-recap` | After a call: recap Doc + Jira tickets (the recap check does this for you for Gong calls) |
 | `/customer-master-engagement-doc` | After a recap: add it to the customer-facing Master Engagement Doc (the recap check does this for you after each automatic recap) |
 | `/customer-internal-notes` | After an internal LD meeting about the customer: paste your notes, and it adds them to the customer's Internal Notes Doc and creates the Jira tickets |
-| `/customer-recap-check` | Set up, check on or change the automatic recaps. Usually said in words instead: see step 5 |
+| `/customer-recap-check` | Set up, check on or change the automated workflows (recaps and meeting prep). Usually said in words instead: see step 5 |
 
 You can also just ask ("recap this call", "prep me for Thursday's session") and Claude picks the
 right skill. The slash command makes sure.
 
 ### 3. Add links as needed
 
-The skill only knows what's in your prompt, the customer's `CLAUDE.md` and the opportunity's
-Drive folder. Give it links the first time, and whenever something new comes up. It saves them
+The skill only knows what's in your prompt, your Active Customers Doc, the customer's
+`CLAUDE.md` and the opportunity's Drive folder. Give it links the first time, and whenever something new comes up. It saves them
 to `CLAUDE.md`, so later runs need only the call.
 
 **First recap for a new customer:** give it everything you have.
@@ -822,7 +854,8 @@ link.
 ### 4. Review, then adjust
 
 - **The recap and brief are linked in the chat** as Google Docs. Rerunning a skill for the same
-  date updates that day's Doc instead of making a copy.
+  meeting updates its Doc instead of making a copy. A second call on the same day gets its own
+  recap, with the meeting title added to its name.
 - **Tickets are created without asking first.** Check them, then ask for changes in the same
   session, e.g. "rename KEY-123 to …" or "that one is Alex's, unassign it".
 - **The skill tells you what it added to `CLAUDE.md`** at the end of each run. You can also edit
@@ -830,9 +863,10 @@ link.
 - **On your phone:** use **Remote Control** of a session running on your computer. The skills don't
   work in a cloud session, which has none of your tools or sign-ins.
 
-### 5. Let recaps happen on their own
+### 5. Let recaps and preps happen on their own
 
-Once the recap and its links work for a customer, let `customer-recap-check` do it for you. Set
+Once the recap and its links work for a customer, let `customer-recap-check` do it for you, and
+prep your meetings too. Set
 it up from the installer (its last question) or in a Code session in your `ai-sa-skills` clone,
 worktree off, in Auto mode: the scheduled task runs from the folder and in the permission mode of
 the session that creates it. The other requests work in any Claude Code session. Say:
@@ -864,13 +898,13 @@ your IT team asks why it's set up this way.
 | **Jira through `acli` + API token** | ✅ Works | Creates epics and tickets with epic link, due date, assignee and formatted description |
 | **Google Drive through your own OAuth client** | ✅ Works | Creates and updates Google Docs in the customer folder and reads them back |
 | **Gmail through Glean** | ✅ Works | Glean reaches your Gmail live. The recap check uses it only to find Gong's "call recording and analysis is ready" emails |
-| **Slack** connector, posting by file share | ✅ Works | The recap check posts to your self-DM by sharing a small file with a message, and reads your replies. Only the file-upload tools can post |
+| **Slack** connector, posting by file share | ✅ Works | Tested: the recap check posts to your self-DM (as you) by sharing a small file with a message, and reads your replies |
 | **Slack** connector, reading a customer's channels | ✅ Works | The recap reads only the channels and chats you listed for that customer |
 | Jira through `acli` browser sign-in (`--web`) | ❌ Blocked | Approving in the browser still returns `access_denied`, most likely an admin policy on OAuth apps |
 | **Google Calendar** connector | ✅ Works | Lists your own events with each attendee's answer (accepted, declined, no answer). Meeting prep only reads it |
 | Atlassian Rovo MCP connector | ❌ Blocked | Couldn't be connected. Probably the same admin policy |
 | Google Drive connector for Claude | ❌ Not enabled | Not available to Claude at the time of writing. Ask IT if that has changed |
-| Slack connector, plain send-message tool | ❌ Not offered | Not among the connector's tools at the time of writing. The recap check would switch to it |
+| Slack connector, plain send-message tool | ➖ Not used | Now listed among the connector's tools. The recap check doesn't need it: posting to your self-DM by file share (above) works |
 | Gong / Salesforce connectors | ➖ Not available | Glean covers both |
 | Gong webhooks | ➖ Not needed | Need a Gong admin and a public endpoint. The recap check reads Gong's emails instead |
 | API keys in `.env` for the desktop app's **Chat tab** | ❌ Won't work | Chats run in the cloud and can't see your Mac's files or tools. That's why these skills run in Claude Code |
@@ -888,6 +922,9 @@ your IT team asks why it's set up this way.
 | `brew install acli` says "Refusing to load formula … from untrusted tap" | Run `brew trust atlassian/acli` first (step 1 of [Sign in to Jira](#sign-in-to-jira)) |
 | You can't find `~/.config` in Finder | It's hidden: press ⌘ + Shift + . to show hidden folders, or check from the terminal |
 | Python warns that Python 3.9 is end-of-life | Harmless; the commands' `-W ignore` hides it |
+| Setting up the recap check stops: Auto mode blocked creating the scheduled task | Rerun `./install.sh`, answer **y** at question 7 and let it add the two permission rules, then start a **new** Code session in your clone (Auto mode) and paste the prompt again |
+| A Claude notification says "The recap check isn't set up yet" | Your Drive folder isn't saved. Say "set up the recap check" in a Code session in your clone |
+| The check runs but posts nothing in Slack | It couldn't confirm your Slack self-DM, so it sends Claude notifications only. Check the Slack connector is on and enabled for Claude Code, and say "what did the recap check do today?" to see the log |
 | "no such file or directory" for a command you stored in a shell variable | zsh doesn't split a variable into words (`G="python script.py"; $G list` fails). Write the command out in full |
 
 **Things we learned about Jira and Drive** (the skills already handle these):
@@ -907,13 +944,14 @@ your IT team asks why it's set up this way.
 
 | Path | What it is |
 |---|---|
-| `install.sh` | Asks the questions, then installs the skills and the Drive helper's libraries |
-| `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `scripts/gong_transcript.py` (Gong transcript → readable file), `references/` |
-| `claude-code/customer-session-prep/` | The quick prep skill: `SKILL.md` |
+| `install.sh` | Asks the questions, installs the skills and the Drive helper's libraries, removes the old `customer-shared-notes` copy, creates your Active Customers Doc once you're signed in, and hands you off to set up the hourly task |
+| `docs/images/` | Screenshots used in this README |
 | `claude-code/customer-engagement-prep/` | The prep skill with the engagement's history: `SKILL.md` |
-| `claude-code/customer-recap-check/` | The automated workflows: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, the run log, Slack uploads, Gong emails, calendar meetings to prep, the Internal Preps folder) |
+| `claude-code/customer-session-prep/` | The quick prep skill: `SKILL.md` |
+| `claude-code/customer-meeting-recap/` | The recap skill: `SKILL.md`, `scripts/jira_ticket.py` (Markdown → Jira ticket), `scripts/gdrive.py` (Drive helper), `scripts/gong_transcript.py` (Gong transcript → readable file), `references/` |
 | `claude-code/customer-master-engagement-doc/` | The Master Engagement Doc skill: `SKILL.md`, `scripts/engagement_doc.py` (ledger of recaps already in each Doc); uses the recap skill's Drive helper |
 | `claude-code/customer-internal-notes/` | The internal notes skill: `SKILL.md`; uses the recap skill's Drive helper and Jira ticket script |
+| `claude-code/customer-recap-check/` | The automated workflows: `SKILL.md`, `scripts/recap_check.py` (settings, processed calls, Active Customers Doc, the run log, Slack uploads, Gong emails, calendar meetings to prep, the Internal Preps folder) |
 
 ## Rules for this repo
 

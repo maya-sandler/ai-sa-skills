@@ -370,7 +370,9 @@ names an Active customer once, on the day, and from the 20:00 run on, the evenin
 3. Keep the meetings that need a prep: `before` is null, `before.status` is `held`, or `moved` is
    true. Skip the rest (already `prepped`, `skipped` or `error`; in dry-run mode, also `dry-run`).
    At most **5 per run**, soonest first; the rest wait for the next run.
-4. **Where the prep goes:**
+4. **Where the prep goes.** In dry-run mode, only work out the folder: post nothing, mark
+   nothing `held`, and create no folder. A missing folder goes in the dry-run line instead (item
+   5).
    - **Customer meeting** (`internal` false): the customer's Drive folder (`folder_id`, else the
      opportunity's Drive folder in `CLAUDE.md`). None: `meetings mark --status held --note
      drive_folder`. If the meeting had no `slack_ts` yet, post once: "Can't prep *<title>*
@@ -388,7 +390,8 @@ names an Active customer once, on the day, and from the 20:00 run on, the evenin
 5. **Prep it.**
    - **Dry run:** don't run the prep. `meetings mark --status dry-run --customer <Customer>
      --title <title> --start <start>`, and list it in the Slack post below with "Dry run: would
-     prep".
+     prep", adding "(no Drive folder yet)" or "(no Misc folder yet)" when item 4 found one
+     missing.
    - **Live:** the customer's local folder is `<customers_dir>/<local_folder>` (create it as step
      6 says if it's missing). Run the `customer-session-prep` skill with:
 
