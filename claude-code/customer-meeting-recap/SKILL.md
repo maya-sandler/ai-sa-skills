@@ -290,7 +290,12 @@ Use the first one that works:
    and prints the number of utterances, the length in minutes and each speaker. Read the whole
    file. Gong's own summary, also in the result, is left out on purpose.
 
-   **Not in Glean yet** (no `richDocumentData.content`, or the helper says so): if the call was
+   Glean sometimes returns the call as plain `Speaker: text` lines in `snippets` instead of
+   `richDocumentData.content`. The helper reads that too: the lines have no times
+   (`[--:--:--]`), `minutes` is null, and it prints `words` and `call_duration_minutes`
+   instead. That is the whole call when `words` is at least 40 times `call_duration_minutes`.
+
+   **Not in Glean yet** (the helper says so, or `words` is below that): if the call was
    on Zoom, try item 3 for the same meeting before giving up. Gong records Zoom calls, and Zoom
    often has its own transcript sooner than Glean has Gong's.
 3. **Zoom.** A Zoom link (`https://<host>.zoom.us/j/<number>`), a Zoom meeting ID, or the same

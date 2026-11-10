@@ -16,6 +16,12 @@ only as a hex hash. Pass `--speaker '<hash>=<name>'` (the whole hash, or its fir
 characters; quote it) to name them, e.g. `--speaker 'A1B2C3=Sam (unsure)'` for a name you're
 unsure of.
 
+Newer Glean results have no `comments` array: the transcript comes back as plain `Speaker: text`
+lines in the document's `snippets`, with no times, plus a small JSON snippet with `call_duration`
+(minutes). That is read too: the lines are written as `[--:--:--] speaker: text`, `minutes` is
+null, and the output has `words` and `call_duration_minutes` instead, so the caller can check it
+is the whole call.
+
 Only the transcript is written. Gong's own call summary, also in the content, is left out.
 """
 import argparse
@@ -83,6 +89,52 @@ def load_comments(raw):
     return content["comments"]
 
 
+def snippet_texts(raw):
+    """The strings in a Glean text result's `snippets[N]: "...", "..."` line."""
+    try:
+        parsed = json.loads(raw)
+        text = tool_text(parsed)
+        if text is not None:
+            raw = text
+    except ValueError:
+        pass
+    m = re.search(r"^\s*snippets\[\d+\]: ", raw, re.M)
+    if not m:
+        return []
+    dec, i, found = json.JSONDecoder(), m.end(), []
+    while i < len(raw) and raw[i] == '"':
+        try:
+            s, i = dec.raw_decode(raw, i)
+        except ValueError:
+            break
+        found.append(s)
+        while i < len(raw) and raw[i] in ", ":
+            i += 1
+    return found
+
+
+SPEAKER_LINE = re.compile(r"^([^:\n]{1,60}): (.*)$")
+
+
+def load_snippets(raw):
+    """(utterances, call_duration_minutes) from the snippets, or ([], None)."""
+    utterances, duration = [], None
+    for s in snippet_texts(raw):
+        if s.lstrip().startswith("{"):
+            try:
+                duration = int(float(json.loads(s).get("call_duration")))
+            except (ValueError, TypeError):
+                pass
+            continue
+        for line in s.split("\n"):
+            m = SPEAKER_LINE.match(line)
+            if m:
+                utterances.append([m.group(1).strip(), m.group(2).strip()])
+            elif line.strip() and utterances:
+                utterances[-1][1] += " " + line.strip()
+    return utterances, duration
+
+
 def when(c):
     return datetime.datetime.fromisoformat(c["createdAt"].replace("Z", "+00:00"))
 
@@ -97,7 +149,20 @@ def main():
     with open(a.file, encoding="utf-8", errors="replace") as f:
         comments = load_comments(f.read())
     if not comments:
-        fail("no transcript in that result: the call may not be in Glean yet")
+        with open(a.file, encoding="utf-8", errors="replace") as f:
+            utterances, duration = load_snippets(f.read())
+        if not utterances:
+            fail("no transcript in that result: the call may not be in Glean yet")
+        counts = {}
+        with open(a.out, "w") as f:
+            for who, text in utterances:
+                counts[who] = counts.get(who, 0) + 1
+                f.write("[--:--:--] %s: %s\n" % (who, text))
+        out({"file": a.out, "source": "glean_snippets", "utterances": len(utterances),
+             "words": sum(len(t.split()) for _, t in utterances), "minutes": None,
+             "call_duration_minutes": duration,
+             "speakers": dict(sorted(counts.items(), key=lambda kv: -kv[1]))})
+        return
 
     names = {}
     for s in a.speaker:

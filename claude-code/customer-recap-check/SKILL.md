@@ -288,13 +288,16 @@ the calls left oldest first, at most 5 (with those resumed in step 3). A call wi
 
 **7. Transcript.** The recap is always written from the call's full transcript. For each call:
 
-1. Glean `read_document` on its `url` (the clean call link). If it returns no
-   `richDocumentData.content`, Gong or Glean is still processing.
+1. Glean `read_document` on its `url` (the clean call link). If it returns neither
+   `richDocumentData.content` nor transcript lines in `snippets` (`Speaker: text`), Gong or
+   Glean is still processing.
 2. `python3 {{SKILLS_DIR}}/customer-meeting-recap/scripts/gong_transcript.py --file <saved
    result> --out <scratchpad>/<customer>-<date>-transcript.txt`. It writes the transcript and
-   prints its length in `minutes`.
-3. **Not in Glean yet** (no content, the helper prints an error, or `minutes` is under half the
-   call's `duration`): try **Zoom** for the same meeting, as the recap skill's Step 2, item 3
+   prints its length in `minutes`. For a result with plain transcript lines in `snippets`
+   (no times), `minutes` is null and it prints `words` and `call_duration_minutes` instead: it
+   is the whole call when `words` is at least 40 times `call_duration_minutes`.
+3. **Not in Glean yet** (no content, the helper prints an error, `minutes` is under half the
+   call's `duration`, or `words` is under 40 times `call_duration_minutes`): try **Zoom** for the same meeting, as the recap skill's Step 2, item 3
    says. Search Zoom (`datasource: zoom_meeting`) for the call's `title`, take the record on its
    `date` that started closest to the call (within 30 minutes), read it with
    `get_meeting_assets`, and run `zoom_transcript.py --file <saved result> --out
