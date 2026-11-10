@@ -27,7 +27,7 @@ This repo includes:
 | **`customer-session-prep`** | Before a call, writes a one-page prep brief (a Google Doc in the customer's Drive folder) from that folder's recaps and Internal Notes, so you know in two minutes what to deliver, what's still open, what each attendee wants, and what to ask | **Manual** (`/customer-session-prep`), and **automatic:** the [Meeting prep](#meeting-prep) workflow runs it for each meeting on your calendar that names an Active customer |
 | **`customer-meeting-recap`** | After a call, turns the recording or transcript into a recap Google Doc in the customer's Drive folder, and creates a Jira ticket for every follow-up the LaunchDarkly team committed to | **Manual** (`/customer-meeting-recap`), and **automatic:** the [Automatic recaps](#automatic-recaps) workflow runs it for each new call with an Active customer |
 | **`customer-master-engagement-doc`** | Adds each recap to the customer-facing `<Customer>-LaunchDarkly Master Engagement Doc`, newest meeting on top, without Jira tickets or internal links | **Manual** (`/customer-master-engagement-doc`), and **automatic:** the [Automatic recaps](#automatic-recaps) workflow runs it after every recap |
-| **`customer-internal-notes`** | After an internal LD meeting about a customer (no recording needed), turns the notes you paste into a block in the customer's ongoing `<Customer> – Internal Notes` Doc, newest on top, and creates a Jira ticket for each LD action item | **Manual:** you prompt it (`/customer-internal-notes`) from the customer's session, and paste your notes |
+| **`customer-internal-notes`** | After an internal LD meeting about a customer (no recording needed), turns the notes you paste into its own dated Doc, `<Customer> – Internal Notes – <date>`, and creates a Jira ticket for each LD action item | **Manual:** you prompt it (`/customer-internal-notes`) from the customer's session, and paste your notes |
 | **`customer-recap-check`** | Runs the three [workflows](#workflows) every hour: syncs your Active Customers Doc into each customer's `CLAUDE.md`, recaps new calls with your Active customers and updates the Master Engagement Doc, and preps your meetings with them, telling you in your Slack self-DM and asking there when links are missing | **Automatic workflows:** a scheduled task in the Claude desktop app, set up once ("set up the recap check") |
 
 **Where you call them from:** Claude Code. You can't call them from Slack or the Chat tab. Slack is only
@@ -103,7 +103,7 @@ no "What the attendees want" section: for the next session's attendees, use
 
 The quick prep. You say something like *"Prep me for the next Acme session"*. It looks only at the
 customer's current Drive folder (the one you give, or the Folder link in your Active Customers
-Doc): the recaps and your `<Customer> – Internal Notes` Doc in it, the follow-up items from them
+Doc): the recaps and your `<Customer> – Internal Notes` Docs in it, the follow-up items from them
 that are still open (checking their Jira tickets), the customer's support tickets, tech stack,
 session plan and links, and the Slack channels in your Active Customers Doc. It saves a one-page
 brief as `<Customer> – Session Prep – <session name> (<date or date TBD>)`:
@@ -198,12 +198,11 @@ customer's Code session, run `/customer-internal-notes` and paste them. If the m
 Zoom and Zoom kept a transcript (AI Companion or a cloud recording was on), it reads that too,
 and then your notes are optional. It:
 
-- **Adds the meeting to one ongoing Doc per customer,** `<Customer> – Internal Notes`, in the
-  customer's Drive folder (the Folder link in your Active Customers Doc), **newest meeting on
-  top**. The first run creates the Doc; later runs add a block above the last one and keep
-  everything else, including your edits. If that meeting is already there, it asks before
-  replacing it. Each block has the attendees, a summary, what was discussed and decided, action
-  items, and open questions.
+- **Saves each meeting as its own dated Doc,** `<Customer> – Internal Notes – <YYYY-MM-DD>`, in
+  the customer's Drive folder (the Folder link in your Active Customers Doc). A second meeting
+  on the same date adds its title to the name. If that meeting's Doc is already there, it asks
+  before replacing it. Each Doc has the attendees, a summary, what was discussed and decided,
+  action items, and open questions.
 - **Writes only what your notes and the Zoom transcript say.** It tidies the wording but adds no
   facts or due dates, and marks anything unclear instead of guessing. Your notes win over the
   transcript, and Zoom's AI summary is never used on its own. The meeting's title and attendees come from your
@@ -363,7 +362,7 @@ How it decides:
 | Internal meeting | Only people from your own email domain (LaunchDarkly) besides you: an **internal prep**, focused on what to align on as the LD team, saved in **Misc → Internal Preps** in your Drive, as `<Customer> – Internal Prep – <meeting title> (<date>)`. The check creates the Internal Preps folder the first time. It needs your Misc folder's link once (the Drive helper can't find folders it didn't create), which setup or a Slack post asks you for |
 | Whose items | Only the people who **accepted** the invitation, not those who declined or haven't answered, and not meeting rooms |
 | Where it looks for their items | The **recaps** and your **Internal Notes** in the customer's Drive folder, your **Jira** tickets on the customer's epic, and the customer's **Slack channels** from your Active Customers Doc. No email |
-| Still open | An item counts only if no later recap or Internal Notes block marks it done, or records it as discussed and agreed |
+| Still open | An item counts only if no later recap or Internal Notes Doc marks it done, or records it as discussed and agreed |
 | Mode | Follows the recap check's mode, so it's live once the recap check is. In dry-run mode it only posts which meetings it would prep, and notes a missing Drive or Misc folder there instead of asking |
 | Asking you | Never, except once in Slack when there's nowhere to save a prep: no Drive folder for the customer (add its Folder link in the Active Customers Doc), or no Misc folder yet (reply in the thread with its link) |
 | Turning it off | Say "turn off meeting prep" (or "turn on meeting prep") |
@@ -802,7 +801,7 @@ Type the skill as a slash command, followed by whatever you have for this call:
 | `/customer-session-prep` | Before a call: one-page prep brief from the current folder's recaps and Internal Notes (meeting prep does this for you before each meeting) |
 | `/customer-meeting-recap` | After a call: recap Doc + Jira tickets (the recap check does this for you for Gong calls) |
 | `/customer-master-engagement-doc` | After a recap: add it to the customer-facing Master Engagement Doc (the recap check does this for you after each automatic recap) |
-| `/customer-internal-notes` | After an internal LD meeting about the customer: paste your notes, and it adds them to the customer's Internal Notes Doc and creates the Jira tickets |
+| `/customer-internal-notes` | After an internal LD meeting about the customer: paste your notes, and it saves them as a dated Internal Notes Doc and creates the Jira tickets |
 | `/customer-recap-check` | Set up, check on or change the automated workflows (recaps and meeting prep). Usually said in words instead: see step 5 |
 
 You can also just ask ("recap this call", "prep me for Thursday's session") and Claude picks the
