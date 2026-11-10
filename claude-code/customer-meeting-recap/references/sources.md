@@ -6,6 +6,7 @@ Check the customer folder's `CLAUDE.md` first, then the sources below. Glean res
 | Need | Where to look |
 |---|---|
 | Gong call transcript | Glean `read_document` with the Gong URL (without the tracking after `id=`), then `scripts/gong_transcript.py` for a readable file (recap skill, Step 2). Always the full transcript: never Gong's summary, the "call is ready" email's Key points or Glean snippets |
+| Zoom meeting transcript (a Zoom call, an internal meeting, or a Gong call not in Glean yet) | Zoom connector `search` with `datasource: zoom_meeting` and the meeting title, then `get_meeting_assets` with its `meeting_uuid`, then `scripts/zoom_transcript.py` (recap skill, Step 2, item 3). Ignore the search's `has_transcript` flag: it's often wrong. The AI Companion summary is never the source of a recap |
 | Who an external `Speaker <hash>` is | Glean `search` for the call title with `app: gong`: its snippets read `Name: <words>`, and its filters list the external participants |
 | Gong "call is ready" emails | Glean `search` with `app: gmail`, query `Call recording and analysis is ready`, `sort_by_recency`. `read_document` on a result returns the raw Gmail message; `recap_check.py gong-email --file <saved result>` reads the call link, account, date and duration from it |
 | Every Gong call for the account (engagement history) | Glean `search` for `<customer>` with `app: gong`, `sort_by_recency` and `num_results: 30`. Page with the cursor until there are no more results. Titles often don't match session names, so match by date and transcript |

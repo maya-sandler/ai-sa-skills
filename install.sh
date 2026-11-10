@@ -275,8 +275,9 @@ echo
 echo "Next steps:"
 echo "  1. Go to your Active Customers Doc and update it with your customers. This lets you use"
 echo "     the skills, the automatic recaps and meeting prep.${doc:+ $doc}"
-echo "  2. In claude.ai, Settings → Connectors: connect Glean, Slack and Google Calendar, and enable"
-echo "     them for Claude Code. Meeting prep reads your own calendar through Google Calendar."
+echo "  2. In claude.ai, Settings → Connectors: connect Glean, Slack, Google Calendar and Zoom, and enable"
+echo "     them for Claude Code. Meeting prep reads your own calendar through Google Calendar, and"
+echo "     Zoom gives the recaps and internal notes a transcript when Zoom kept one."
 echo "  3. Open a Claude Code session and call the skills 🙂"
 
 # 8. The automated workflows. A shell script can't create a scheduled task: only a session in

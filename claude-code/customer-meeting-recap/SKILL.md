@@ -289,8 +289,38 @@ Use the first one that works:
    It writes one `[HH:MM:SS] speaker: text` line per utterance, timed from the start of the call,
    and prints the number of utterances, the length in minutes and each speaker. Read the whole
    file. Gong's own summary, also in the result, is left out on purpose.
-3. If none of these works, ask the SA to paste the transcript. If the call isn't in Glean yet,
-   say so: Gong takes a while after the call.
+
+   **Not in Glean yet** (no `richDocumentData.content`, or the helper says so): if the call was
+   on Zoom, try item 3 for the same meeting before giving up. Gong records Zoom calls, and Zoom
+   often has its own transcript sooner than Glean has Gong's.
+3. **Zoom.** A Zoom link (`https://<host>.zoom.us/j/<number>`), a Zoom meeting ID, or the same
+   meeting as a Gong call that isn't in Glean yet. With the Zoom connector:
+   1. **Find the meeting** if you only have a link or the call's title and time: `search` with
+      `datasource_filters` = `[{"datasource": "zoom_meeting"}]` and `query` = the meeting title
+      (or the customer's name). Take the record on the call's date whose `meeting_start_time`
+      is within 30 minutes of the call's start, and note its `meeting_uuid`. A meeting can have a
+      second record, your "my notes" copy, whose topic ends with the date and time: try it too
+      if the first has no transcript.
+   2. **Read it:** `get_meeting_assets` with `meetingId` = the `meeting_uuid` (or the numeric
+      meeting ID from the link, which reads the latest occurrence). Don't skip a meeting because
+      search says `has_transcript: false`: that flag is often wrong. The result is usually saved
+      to a file because it's large; if it came back inline, write all of it, unchanged, to a
+      scratchpad file.
+   3. **Turn it into a transcript:**
+
+      ```bash
+      python3 {{SKILLS_DIR}}/customer-meeting-recap/scripts/zoom_transcript.py --file <saved result> --out <scratchpad>/transcript.txt
+      ```
+
+      It reads whichever transcript Zoom has (a cloud recording's, or AI Companion's) and prints
+      where it came from, the utterances, the length in `minutes` (null when Zoom gives no
+      times) and each speaker. An `error` means Zoom has no transcript for it (yet). Zoom's AI
+      Companion summary and "my notes" are left out of the transcript on purpose: like Gong's
+      summary, they're never the source of a recap.
+
+   Zoom speakers show by their Zoom display names, so `--speaker` isn't needed.
+4. If none of these works, ask the SA to paste the transcript. If the call isn't in Glean or
+   Zoom yet, say so: transcripts can take a few hours after the call.
 
 **Speakers.** LaunchDarkly people show as their email: use their names from `CLAUDE.md`'s Team
 list, or Glean `employee_search`. Some external speakers show only as `Speaker <6 hex
@@ -301,9 +331,14 @@ external participants. Then rerun the helper with `--speaker '<hash>=<Name>'` fo
 (quote it). Mark a name you're unsure of, e.g. `--speaker 'A1B2C3=Sam (unsure)'`, and keep the
 mark in the recap's Attendees line. Leave one you can't tell as `Speaker <hash>`.
 
-Note the meeting date, title and attendees (theirs and ours). If the transcript was pasted
-(rather than in Gong), save it to Drive as `<Customer> – Transcript – <YYYY-MM-DD> – <short title>`
-so the prep skill can use it later.
+Note the meeting date, title and attendees (theirs and ours). If the transcript was pasted or
+came from Zoom (rather than from Gong through Glean), save it to Drive as
+`<Customer> – Transcript – <YYYY-MM-DD> – <short title>` so the prep skill can use it later: Zoom
+can delete cloud recordings after a while.
+
+**Recording line** (Step 4): for a Gong call, the Gong link and call ID as usual, even when the
+transcript came from Zoom (add "transcript from Zoom"), so the recap check still recognizes the
+call. For a Zoom-only meeting: `**Recording:** Zoom meeting <meeting ID> (<YYYY-MM-DD>)`.
 
 ## Step 3: Read what came before
 

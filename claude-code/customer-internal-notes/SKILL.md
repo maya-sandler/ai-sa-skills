@@ -1,6 +1,6 @@
 ---
 name: customer-internal-notes
-description: Turn the SA's own notes from an internal LaunchDarkly meeting about a customer (only LD people, often on Zoom with no recording) into a block in the customer's ongoing internal notes Google Doc, "<Customer> – Internal Notes", in the customer's Drive folder, newest meeting on top, and create Jira tickets under the customer's epic for the LD action items (the SA's own assigned to the SA, anyone else's unassigned with the owner's name). Never customer-facing. Use when the user (a LaunchDarkly Solutions Architect) runs /customer-internal-notes, or pastes notes from an internal sync, internal connect or account team meeting and asks to write them up, add them to the internal notes, or make tickets from them, usually from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
+description: Turn the SA's own notes from an internal LaunchDarkly meeting about a customer (only LD people), plus the meeting's Zoom transcript when Zoom kept one, into a block in the customer's ongoing internal notes Google Doc, "<Customer> – Internal Notes", in the customer's Drive folder, newest meeting on top, and create Jira tickets under the customer's epic for the LD action items (the SA's own assigned to the SA, anyone else's unassigned with the owner's name). Never customer-facing. Use when the user (a LaunchDarkly Solutions Architect) runs /customer-internal-notes, or pastes notes from an internal sync, internal connect or account team meeting and asks to write them up, add them to the internal notes, or make tickets from them, usually from inside a customer folder like {{CUSTOMERS_DIR}}/<customer>/.
 ---
 
 # Customer Internal Notes (Claude Code)
@@ -44,8 +44,9 @@ delete them at the end. Nothing goes in the local customer folder except `CLAUDE
 3. **Drive folder.** The folder the SA gives wins; otherwise the row's Folder link; otherwise the
    opportunity's Drive folder in `CLAUDE.md`. None of them: ask the SA for the folder link before
    writing anything. The folder ID is the part after `/folders/`.
-4. **The notes.** The SA pastes them in chat. No notes in the prompt: ask for them, and wait.
-   Use only what the notes say.
+4. **The notes.** The SA pastes them in chat. They're the main source. If the prompt has none,
+   check Zoom first (item 6): with a Zoom transcript, go ahead without asking. With neither, ask
+   for the notes, and wait.
 5. **The meeting.** Its date, title and attendees, in this order: what the SA said, then the SA's
    calendar, then defaults. For the calendar, use the Google Calendar connector's `list_events`
    with `fullText` = the customer's name, on the meeting date (today unless the SA said
@@ -53,6 +54,19 @@ delete them at the end. Nothing goes in the local customer folder except `CLAUDE
    title is the meeting title, and its attendees who accepted (not the SA, not rooms) are the
    attendees, named by display name or `CLAUDE.md`'s Team section. Nothing found: the date is
    today, the title is `Internal sync`, and the attendees are whoever the notes name.
+6. **Zoom.** If the meeting was on Zoom (the calendar event has a Zoom link, or the SA says so),
+   look for what Zoom kept, as the recap skill's Step 2, item 3 says: find the meeting with the
+   Zoom connector's `search` (`datasource: zoom_meeting`, the meeting title, that date), read it
+   with `get_meeting_assets`, and run:
+
+   ```bash
+   python3 {{SKILLS_DIR}}/customer-meeting-recap/scripts/zoom_transcript.py --file <saved result> --out <scratchpad>/zoom-transcript.txt --summary-out <scratchpad>/zoom-summary.md
+   ```
+
+   Read the transcript in full if there is one, and the AI Companion summary or "my notes" if
+   there are. Zoom only has them when AI Companion or cloud recording was on, often not for
+   internal meetings: an `error` just means there's nothing there. Also use the Zoom
+   attendees when the calendar had none. No Zoom connector: skip this.
 
 ## Step 2: Read what came before
 
@@ -70,7 +84,7 @@ delete them at the end. Nothing goes in the local customer folder except `CLAUDE
 ```
 ## <YYYY-MM-DD> – <meeting title>
 **Attendees:** <LD people (role)>
-**Source:** <SA first name>'s notes
+**Source:** <SA first name>'s notes · Zoom transcript (whichever were used)
 
 ### Summary
 2–4 bullets: why the meeting happened and the main outcome.
@@ -86,9 +100,12 @@ What's still undecided or needs an answer, and who it's for. Nothing that's an a
 ```
 
 Rules:
-- **Only what the notes say.** Tidy the wording, but add no facts, no topics and no due dates
-  the notes don't give (use `TBD`). If a note is unclear, keep the SA's wording and add
-  "(unclear in notes)" rather than guessing.
+- **Only what the notes and the Zoom transcript say.** Tidy the wording, but add no facts, no
+  topics and no due dates they don't give (use `TBD`). If a note is unclear, keep the SA's
+  wording and add "(unclear in notes)" rather than guessing; the transcript can clear it up. When
+  the notes and the transcript disagree, the SA's notes win: add the transcript's version as
+  "(transcript says …)". Zoom's AI summary and "my notes" only help you read the transcript or
+  the notes; never take facts or action items from the summary alone.
 - Turn relative dates ("Thursday") into absolute dates, using the meeting date.
 - **Action items** are anything someone committed to, LD or the customer. The **Owner** is that
   person's first name; "we", "I" or unclear means the SA. A customer item (someone at the
